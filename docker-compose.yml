@@ -1,0 +1,40 @@
+services:
+  cuaderno:
+    build: .
+    container_name: cuaderno-docente
+    restart: unless-stopped
+    ports:
+      - "7001:3000"
+    volumes:
+      - cuaderno_data:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=cambia_este_secreto_en_produccion
+      - TZ=Europe/Madrid
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+volumes:
+  cuaderno_data:
+    driver: local
+
+x-casaos:
+  main: cuaderno
+  title:
+    en_us: Cuaderno Docente
+  tagline:
+    en_us: Creador de Cuaderno Docente interactivo
+  description:
+    en_us: >
+      App web para crear y gestionar cuadernos docentes interactivos.
+      Genera calendarios con módulos, festivos, FEOE, evaluaciones y RAs.
+      Incluye roles admin/docente, guardado automático en sesión y edición online.
+  icon: https://raw.githubusercontent.com/luisjsolsona/Cuaderno-Docente/main/icon.svg
+  architectures:
+    - amd64
+    - arm64
+  category: utilities
+  port_map: "7001"
+  scheme: http
+  index: /

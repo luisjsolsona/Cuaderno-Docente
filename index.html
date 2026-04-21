@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cuaderno Docente</title>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --ink: #1e293b;
+      --muted: #64748b;
+      --accent: #2563eb;
+      --accent2: #059669;
+      --warn: #d97706;
+      --danger: #dc2626;
+      --feoe: #7c3aed;
+      --feoe-bg: #f5f3ff;
+      --border: #e2e8f0;
+      --input-bg: #f8fafc;
+      --shadow: 0 2px 8px rgba(0,0,0,0.07);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.10);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
+
+    /* === HEADER === */
+    #app-header {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100;
+    }
+    .header-inner { max-width: 1200px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; gap: 12px; height: 56px; }
+    .header-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; color: var(--accent); text-decoration: none; }
+    .header-logo svg { width: 32px; height: 32px; }
+    .header-spacer { flex: 1; }
+    .save-status { font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 600; transition: .3s; }
+    .save-ok { color: #059669; background: #d1fae5; }
+    .save-info { color: #d97706; background: #fef3c7; }
+    .save-warn { color: #d97706; background: #fef3c7; }
+    .save-err { color: #dc2626; background: #fee2e2; }
+    .header-user { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+    .header-user strong { color: var(--ink); }
+    .btn-link { background: none; border: none; cursor: pointer; color: var(--accent); font-size: 13px; padding: 4px 8px; border-radius: 6px; }
+    .btn-link:hover { background: #eff6ff; }
+    .role-badge { background: #dbeafe; color: #1d4ed8; border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+    .role-badge.admin { background: #fce7f3; color: #9d174d; }
+
+    /* === CARDS === */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 18px; }
+    h1 { font-size: clamp(18px, 3vw, 26px); margin: 0 0 8px; }
+    h2 { font-size: 16px; margin: 0 0 10px; color: var(--accent); }
+    h3 { font-size: 14px; margin: 8px 0 6px; color: var(--accent2); }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 8px 0 4px; }
+
+    /* === INPUTS === */
+    input, select, textarea, button {
+      font-family: inherit; font-size: 14px; outline: none;
+      background: var(--input-bg); color: var(--ink);
+      border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; padding: 0; }
+    textarea { resize: vertical; min-height: 60px; width: 100%; }
+    button { cursor: pointer; transition: .15s; border-color: var(--border); }
+    button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    button:disabled { opacity: .45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+    /* === BUTTONS === */
+    .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border-radius: 10px; font-weight: 500; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .btn.primary:hover { background: #1d4ed8; }
+    .btn.success { background: var(--accent2); border-color: var(--accent2); color: #fff; font-weight: 600; }
+    .btn.success:hover { background: #047857; }
+    .btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600; }
+    .btn.danger:hover { background: #b91c1c; }
+    .btn.ghost { background: transparent; border-color: var(--border); }
+    .btn.ghost:hover { background: var(--bg); }
+    .btn.feoe-btn { background: var(--feoe); border-color: var(--feoe); color: #fff; font-weight: 600; }
+    .btn.feoe-btn:hover { background: #6d28d9; }
+    .btn.ra-btn { background: var(--accent2); border-color: var(--accent2); color: #fff; font-weight: 600; }
+    .btn.import-btn { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .btn.small { padding: 5px 9px; font-size: 12px; }
+
+    /* === LAYOUT === */
+    .grid { display: grid; gap: 14px; }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media(max-width: 800px) { .grid.cols-2 { grid-template-columns: 1fr; } }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .row > * { flex: 1 1 150px; }
+    .right { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+    .hr { height: 1px; background: var(--border); margin: 14px 0; }
+    .muted { color: var(--muted); }
+    .note { font-size: 13px; color: var(--warn); }
+    .note.purple { color: var(--feoe); }
+    .note.green { color: var(--accent2); }
+
+    /* === CHIPS === */
+    .list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+    .chip { display: inline-flex; align-items: center; gap: 5px; background: var(--bg); border: 1px solid var(--border); color: var(--ink); padding: 5px 10px; border-radius: 999px; font-size: 12px; }
+    .chip.feoe-chip { background: var(--feoe-bg); border-color: #c4b5fd; color: var(--feoe); }
+    .chip button { border: none; background: transparent; color: var(--muted); padding: 0 3px; cursor: pointer; font-size: 13px; border-radius: 50%; }
+    .chip button:hover { color: var(--danger); transform: none; box-shadow: none; }
+
+    /* === TABLE === */
+    .table-wrap { overflow: auto; max-height: 65vh; border: 1px solid var(--border); border-radius: 12px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    thead th { position: sticky; top: 0; background: #f8fafc; z-index: 2; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    td { padding: 8px 10px; font-size: 13px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    tbody tr:hover { background: #fafbff; }
+    tbody tr.holiday { background: #fff7f7; }
+    tbody tr.feoe-row { background: var(--feoe-bg); }
+
+    /* === BADGES === */
+    .badge { border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+    .badge-festivo { background: #fee2e2; color: #dc2626; }
+    .badge-eval { background: #fef3c7; color: #d97706; }
+    .badge-feoe { background: #ede9fe; color: #7c3aed; }
+    .badge-clase { background: #d1fae5; color: #059669; }
+    .badge-admin { background: #fce7f3; color: #9d174d; }
+    .badge-docente { background: #dbeafe; color: #1d4ed8; }
+
+    /* === RAs === */
+    .ra-card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 8px; }
+    .ra-card.preview { border-color: #bbf7d0; background: #f0fdf4; }
+    .ra-card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .ra-badge { background: var(--accent); color: #fff; font-weight: 700; border-radius: 8px; padding: 3px 10px; font-size: 13px; flex-shrink: 0; }
+    .ra-title { font-size: 14px; font-weight: 600; flex: 1; }
+    .ce-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+    .ce-item { display: flex; align-items: flex-start; gap: 8px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 13px; }
+    .ce-badge { background: #dbeafe; color: var(--accent); font-weight: 700; border-radius: 6px; padding: 1px 7px; font-size: 11px; flex-shrink: 0; }
+    .ce-text { color: var(--ink); flex: 1; }
+    .empty-state { color: var(--muted); font-size: 13px; font-style: italic; margin: 6px 0; }
+    .ra-container { display: flex; flex-direction: column; gap: 8px; }
+
+    /* === ACCORDION === */
+    .accordion-header { cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; user-select: none; }
+    .accordion-header .arrow { transition: .2s; font-size: 12px; flex-shrink: 0; }
+    .accordion-header.open .arrow { transform: rotate(180deg); }
+    .accordion-body { overflow: hidden; transition: max-height .35s ease; }
+
+    /* === STATUS === */
+    .status-ok { color: #059669; font-weight: 600; }
+    .status-err { color: #dc2626; font-weight: 600; }
+    .status-loading { color: #d97706; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid #fbbf2455; border-top-color: #fbbf24; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 5px; }
+
+    /* === LOGIN SCREEN === */
+    #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%); padding: 20px; }
+    .login-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow-lg); padding: 40px 36px; width: 100%; max-width: 380px; }
+    .login-logo { text-align: center; margin-bottom: 28px; }
+    .login-logo h1 { font-size: 22px; color: var(--ink); margin: 12px 0 4px; }
+    .login-logo p { color: var(--muted); font-size: 13px; margin: 0; }
+    .login-field { margin-bottom: 14px; }
+    .login-field label { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .login-field input { width: 100%; }
+    .login-btn { width: 100%; padding: 12px; font-size: 15px; font-weight: 700; background: var(--accent); color: #fff; border: none; border-radius: 12px; cursor: pointer; transition: .15s; margin-top: 6px; }
+    .login-btn:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,0.3); }
+    .login-error { color: #dc2626; font-size: 13px; text-align: center; margin-top: 10px; min-height: 20px; }
+    .login-footer { text-align: center; margin-top: 20px; font-size: 12px; color: var(--muted); }
+
+    /* === ADMIN PANEL === */
+    .admin-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 2px solid var(--border); padding-bottom: 0; }
+    .admin-tab { padding: 10px 18px; border: none; background: none; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: .15s; border-radius: 8px 8px 0 0; }
+    .admin-tab:hover { color: var(--accent); transform: none; box-shadow: none; }
+    .admin-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: #eff6ff; }
+    .user-table-wrap { overflow: auto; }
+    .user-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .user-table th { text-align: left; padding: 10px 12px; background: var(--bg); border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+    .user-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .user-table tr:last-child td { border-bottom: none; }
+    .user-table tr:hover td { background: #fafbff; }
+    .cuaderno-card { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); margin-bottom: 8px; }
+    .cuaderno-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+    .cuaderno-info { flex: 1; min-width: 0; }
+    .cuaderno-name { font-weight: 600; font-size: 14px; }
+    .cuaderno-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* === MODAL === */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal { background: var(--card); border-radius: 16px; padding: 28px; width: 100%; max-width: 420px; box-shadow: var(--shadow-lg); }
+    .modal h3 { margin: 0 0 18px; font-size: 17px; }
+    .modal .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+    .modal-field { margin-bottom: 12px; }
+    .modal-field label { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+    .modal-field input { width: 100%; }
+
+    /* === PLANNING === */
+    .plan-bar { display: flex; border-radius: 8px; overflow: hidden; height: 26px; gap: 2px; margin-bottom: 8px; }
+    .plan-bar-seg { display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; min-width: 20px; cursor: default; }
+    .plan-legend { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+    .plan-legend-item { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+
+    /* === INLINE EDIT === */
+    .inline-obs { width: 100%; min-width: 120px; padding: 4px 7px; font-size: 12px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px; resize: none; height: 30px; overflow: hidden; }
+    .inline-obs:focus { border-color: var(--accent); outline: none; }
+    .inline-ra-sel { font-size: 12px; padding: 4px 6px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px; max-width: 160px; }
+
+    /* === SECTIONS === */
+    .section-mt { margin-top: 16px; }
+    .action-bar { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+    .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-generate { flex: 1; padding: 18px; border-radius: 14px; font-size: 17px; font-weight: 800; border: none; background: linear-gradient(90deg, var(--accent), #0ea5e9); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 6px 24px rgba(37,99,235,0.25); transition: .15s; }
+    .btn-generate:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(37,99,235,0.35); }
+    .btn-plan { flex: 1; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: 700; border: none; background: linear-gradient(90deg, var(--feoe), #0ea5e9); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: .15s; }
+    .btn-plan:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,58,237,0.25); }
+    .kbd { font-family: ui-monospace, Menlo, Consolas, monospace; background: var(--bg); border: 1px solid var(--border); padding: 2px 6px; border-radius: 5px; font-size: 12px; color: var(--ink); }
+
+    /* RA colors (light) */
+    .ra-color-0 { border-left: 4px solid #3b82f6; }
+    .ra-color-1 { border-left: 4px solid #059669; }
+    .ra-color-2 { border-left: 4px solid #db2777; }
+    .ra-color-3 { border-left: 4px solid #d97706; }
+    .ra-color-4 { border-left: 4px solid #7c3aed; }
+    .ra-color-5 { border-left: 4px solid #0891b2; }
+    .ra-color-6 { border-left: 4px solid #ea580c; }
+    .ra-color-7 { border-left: 4px solid #16a34a; }
+  </style>
+</head>
+<body>
+
+<!-- ========= LOGIN ========= -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 100 100" width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100" height="100" rx="20" fill="#2563eb"/>
+        <rect x="18" y="14" width="54" height="68" rx="6" fill="white" opacity="0.95"/>
+        <rect x="18" y="14" width="8" height="68" rx="6" fill="#bfdbfe"/>
+        <rect x="30" y="24" width="34" height="5" rx="2.5" fill="#2563eb"/>
+        <rect x="30" y="35" width="34" height="3" rx="1.5" fill="#93c5fd"/>
+        <rect x="30" y="43" width="34" height="3" rx="1.5" fill="#93c5fd"/>
+        <rect x="30" y="51" width="24" height="3" rx="1.5" fill="#93c5fd"/>
+        <rect x="30" y="60" width="34" height="3" rx="1.5" fill="#bfdbfe"/>
+        <rect x="30" y="68" width="20" height="3" rx="1.5" fill="#bfdbfe"/>
+      </svg>
+      <h1>Cuaderno Docente</h1>
+      <p>Creador de cuaderno docente interactivo</p>
+    </div>
+    <div class="login-field">
+      <label>Usuario</label>
+      <input type="text" id="login-user" placeholder="Nombre de usuario" autocomplete="username" />
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password" />
+    </div>
+    <button class="login-btn" id="login-btn">Iniciar sesión</button>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-footer">admin / admin123 (cambia tras el primer acceso)</div>
+  </div>
+</div>
+
+<!-- ========= APP ========= -->
+<div id="app" style="display:none">
+  <header id="app-header">
+    <div class="header-inner">
+      <div class="header-logo">
+        <svg viewBox="0 0 100 100" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100" height="100" rx="20" fill="#2563eb"/>
+          <rect x="18" y="14" width="54" height="68" rx="6" fill="white" opacity="0.95"/>
+          <rect x="18" y="14" width="8" height="68" rx="6" fill="#bfdbfe"/>
+          <rect x="30" y="24" width="34" height="5" rx="2.5" fill="#2563eb"/>
+          <rect x="30" y="35" width="34" height="3" rx="1.5" fill="#93c5fd"/>
+          <rect x="30" y="43" width="34" height="3" rx="1.5" fill="#93c5fd"/>
+        </svg>
+        Cuaderno Docente
+      </div>
+      <div class="header-spacer"></div>
+      <span id="save-status" class="save-status"></span>
+      <div class="header-user">
+        <span class="role-badge" id="header-role"></span>
+        <strong id="header-username"></strong>
+        <button class="btn-link" id="btn-my-cuaderno" style="display:none" title="Ver mi cuaderno">📋 Mi cuaderno</button>
+        <button class="btn-link" id="btn-admin-panel" style="display:none" title="Panel administrador">⚙️ Admin</button>
+        <button class="btn-link" id="btn-change-pass">🔑 Contraseña</button>
+        <button class="btn-link" id="btn-logout">Salir →</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap" style="padding-top:20px">
+
+    <!-- ========= ADMIN PANEL ========= -->
+    <div id="admin-panel" style="display:none">
+      <h1>⚙️ Panel de administración</h1>
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="users">👥 Docentes</button>
+        <button class="admin-tab" data-tab="cuadernos">📋 Cuadernos</button>
+      </div>
+
+      <!-- Users tab -->
+      <div id="tab-users">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+            <h2 style="margin:0">Gestión de docentes</h2>
+            <button class="btn primary small" id="btn-add-user">+ Nuevo docente</button>
+          </div>
+          <div class="user-table-wrap">
+            <table class="user-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th><th>Usuario</th><th>Rol</th><th>Registrado</th><th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cuadernos tab -->
+      <div id="tab-cuadernos" style="display:none">
+        <div class="card">
+          <h2>Cuadernos de los docentes</h2>
+          <div id="cuadernos-list"><p class="empty-state">Cargando...</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========= DOCENTE PANEL ========= -->
+    <div id="docente-panel" style="display:none">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+        <div>
+          <h1 style="margin:0">📅 Creador de Cuaderno Docente</h1>
+          <p class="muted" style="font-size:13px;margin:4px 0 0">Sigue los pasos para generar tu calendario. Los cambios se guardan automáticamente.</p>
+        </div>
+        <input type="text" id="cuaderno-title" placeholder="Título del cuaderno (ej. CFGM Informática 2024-25)" style="flex:1 1 280px;max-width:380px;font-weight:600;font-size:14px" />
+      </div>
+
+      <div class="card">
+        <p class="note">Rellena los pasos 1–6 y pulsa <strong>⚡ Generar calendario</strong>. El resultado se muestra y guarda aquí mismo. Puedes exportar a <span class="kbd">.xlsx</span> o <span class="kbd">.csv</span>.</p>
+        <div class="hr"></div>
+
+        <div class="grid cols-2">
+          <!-- Step 1 -->
+          <div class="card">
+            <h2>1) Fechas del curso</h2>
+            <label>Fecha de inicio</label><input type="date" id="inicio" />
+            <label>Fecha de fin</label><input type="date" id="fin" />
+          </div>
+
+          <!-- Step 2 -->
+          <div class="card">
+            <h2>2) Festivos 🎌</h2>
+            <div class="row">
+              <div style="display:flex;gap:8px;flex:2 1 220px;flex-wrap:wrap">
+                <div style="flex:1 1 120px"><label>Inicio</label><input type="date" id="festivoInicio" /></div>
+                <div style="flex:1 1 120px"><label>Fin (opcional)</label><input type="date" id="festivoFin" /></div>
+              </div>
+              <input type="text" id="festivoMotivo" placeholder="Motivo (opcional)" />
+              <button class="btn" id="addFestivo">Añadir</button>
+            </div>
+            <div class="list" id="festivosList"></div>
+            <p class="note" style="margin-top:7px">Se marcan todos los días entre inicio y fin.</p>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="card">
+            <h2>3) FEOE 🏭 <span style="font-size:12px;font-weight:400;color:var(--feoe)">Formación en Empresa u Organismo Equiparado</span></h2>
+            <div class="row">
+              <div style="display:flex;gap:8px;flex:2 1 220px;flex-wrap:wrap">
+                <div style="flex:1 1 120px"><label>Inicio</label><input type="date" id="feoeInicio" /></div>
+                <div style="flex:1 1 120px"><label>Fin (opcional)</label><input type="date" id="feoeFin" /></div>
+              </div>
+              <input type="text" id="feoeMotivo" placeholder="Empresa / organismo (opcional)" />
+              <button class="btn feoe-btn" id="addFeoe">Añadir FEOE</button>
+            </div>
+            <div class="list" id="feoeList"></div>
+            <p class="note purple" style="margin-top:7px">Días FEOE: fondo morado en el calendario, sin clases.</p>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="card">
+            <h2>4) Evaluaciones 📝</h2>
+            <div class="row">
+              <input type="date" id="evalFecha" />
+              <input type="text" id="evalDesc" placeholder="Descripción (p. ej. 1ª Eval 1ºCFGM)" />
+              <label style="align-self:center;flex:0 0 auto;display:flex;align-items:center;gap:6px"><input type="checkbox" id="evalBloquea" /> Bloquea sesiones</label>
+              <button class="btn" id="addEval">Añadir</button>
+            </div>
+            <div class="list" id="evalsList"></div>
+          </div>
+
+          <!-- Step 5 -->
+          <div class="card" style="grid-column:1/-1">
+            <h2>5) Módulos, día y horas (semanal) 📘</h2>
+            <div class="row">
+              <input type="text" id="moduloNombre" placeholder="Nombre del módulo (p. ej. SORE 0224)" />
+              <select id="moduloDia">
+                <option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option>
+                <option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="0">Domingo</option>
+              </select>
+              <input type="time" id="moduloInicio" value="08:00" />
+              <input type="time" id="moduloFin" value="10:00" />
+              <button class="btn" id="addModulo">Añadir módulo</button>
+            </div>
+            <div class="list" id="modulosList"></div>
+            <p class="note" style="margin-top:7px">Se repiten semanalmente, excluyendo festivos, FEOE y evaluaciones bloqueantes.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 6: RAs -->
+      <div class="card section-mt">
+        <div class="accordion-header open" id="raAccHeader">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:1;min-width:0">
+            <h2 style="margin:0">6) Resultados de Aprendizaje (RAs) y Criterios de Evaluación (CEs) 🎯</h2>
+            <a href="https://centrosdocentes.catedu.es/awc/public/pages/familias/index.php"
+               target="_blank" rel="noopener noreferrer"
+               onclick="event.stopPropagation()"
+               style="display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;font-weight:700;font-size:12px;padding:6px 14px;border-radius:999px;text-decoration:none;box-shadow:0 3px 10px rgba(37,99,235,.25);transition:.15s;white-space:nowrap;flex-shrink:0"
+               onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='var(--accent)'">
+              🔍 CONSULTAR RA y CE
+            </a>
+          </div>
+          <span class="arrow">▼</span>
+        </div>
+        <div class="accordion-body" id="raAccBody">
+          <div class="hr"></div>
+
+          <!-- Import from URL -->
+          <div class="card" style="background:#f0fdf4;border-color:#bbf7d0;margin-bottom:14px">
+            <h3 style="color:var(--accent2);margin:0 0 6px">📥 Importar RAs y CEs automáticamente desde CATEDU</h3>
+            <p style="font-size:13px;color:var(--muted);margin:0 0 10px">
+              <strong>Paso 1:</strong> Pulsa <em>CONSULTAR RA y CE</em> → busca tu ciclo y módulo → copia la URL del navegador.<br>
+              <strong>Paso 2:</strong> Pégala aquí y pulsa <strong>Importar RAs</strong>.
+            </p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+              <div style="flex:3 1 260px">
+                <label style="margin:0 0 4px">URL del módulo</label>
+                <input type="text" id="importUrl" placeholder="https://centrosdocentes.catedu.es/awc/modulo.php?cod=..." style="width:100%" />
+              </div>
+              <button class="btn import-btn" id="importarUrl" style="flex:0 0 auto;align-self:flex-end">⬇ Importar RAs</button>
+            </div>
+            <div id="importStatus" style="margin-top:10px;font-size:13px;min-height:18px"></div>
+            <div id="importPreview" style="display:none;margin-top:12px">
+              <div class="hr"></div>
+              <p style="font-size:13px;color:var(--accent2);font-weight:600;margin:0 0 10px">Vista previa — revisa y confirma:</p>
+              <div id="importPreviewList" class="ra-container" style="max-height:320px;overflow:auto;padding-right:4px"></div>
+              <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+                <button class="btn success" id="confirmarImport">✅ Añadir al cuaderno</button>
+                <button class="btn ghost" id="cancelarImport">✕ Cancelar</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div class="hr" style="flex:1;margin:0"></div>
+            <span style="font-size:12px;color:var(--muted);white-space:nowrap">o añade RAs manualmente</span>
+            <div class="hr" style="flex:1;margin:0"></div>
+          </div>
+
+          <!-- Manual RA -->
+          <div class="card" style="margin-bottom:12px">
+            <h3>Añadir RA manualmente</h3>
+            <div class="row" style="margin-bottom:8px">
+              <div style="flex:0 1 90px"><label>Nº RA</label><input type="text" id="raNum" placeholder="RA1" style="width:100%" /></div>
+              <div style="flex:3 1 260px"><label>Contenido / descripción</label><input type="text" id="raContenido" placeholder="Identifica los elementos del sistema…" style="width:100%" /></div>
+            </div>
+            <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+              <h3 style="margin:0 0 8px">Criterios de Evaluación</h3>
+              <div class="row" style="margin-bottom:8px">
+                <div style="flex:0 1 100px"><label>Cód. CE</label><input type="text" id="ceNum" placeholder="CE1.1" style="width:100%" /></div>
+                <div style="flex:3 1 260px"><label>Descripción</label><input type="text" id="ceDesc" placeholder="Describe el criterio…" style="width:100%" /></div>
+                <div style="flex:0 0 auto;align-self:flex-end"><button class="btn small" id="addCeTemp">+ CE</button></div>
+              </div>
+              <div class="ce-list" id="ceTempList"><p class="empty-state">Sin CEs añadidos aún.</p></div>
+            </div>
+            <button class="btn ra-btn" id="addRa">✅ Guardar RA con sus CEs</button>
+          </div>
+
+          <div class="ra-container" id="raContainer">
+            <p class="empty-state" id="raEmptyState">No hay RAs definidos todavía.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="action-bar">
+        <div class="action-row">
+          <button class="btn ghost" id="limpiarTodo" style="flex:0 0 auto;padding:13px 18px">🗑 Limpiar todo</button>
+          <button class="btn-plan" id="planificar">🧠 Proponer planificación por RAs</button>
+        </div>
+        <button class="btn-generate" id="generar">⚡ GENERAR CALENDARIO</button>
+      </div>
+
+      <!-- Planning output -->
+      <div id="salidaPlan" class="card section-mt" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+          <h2 style="margin:0">🧠 Planificación estimada por RAs</h2>
+          <button class="btn ghost small" id="cerrarPlan">✕ Cerrar</button>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin:4px 0 12px">Distribución equitativa de sesiones entre los RAs definidos, teniendo en cuenta festivos, FEOE y evaluaciones.</p>
+        <div class="hr"></div>
+        <div id="planContent"></div>
+      </div>
+
+      <!-- Calendar output -->
+      <div id="salida" class="card section-mt" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <h2 style="margin:0">📆 Calendario generado</h2>
+          <div class="right">
+            <button class="btn primary small" id="descargarXLSX">⬇ .xlsx</button>
+            <button class="btn ghost small" id="descargarCSV">⬇ .csv</button>
+            <button class="btn ghost small" id="copiarHTML">📋 HTML</button>
+          </div>
+        </div>
+        <div id="meta" class="muted" style="font-size:13px;margin-bottom:10px"></div>
+        <p style="font-size:12px;color:var(--accent2);margin:0 0 8px">💡 Puedes editar la columna <strong>Observaciones</strong> y el <strong>RA Planificado</strong> directamente en la tabla. Los cambios se guardan automáticamente.</p>
+        <div class="table-wrap">
+          <table id="tabla">
+            <thead><tr>
+              <th>Fecha</th><th>Día</th><th>Tipo</th><th>Módulo</th>
+              <th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>RA Planificado</th>
+            </tr></thead>
+            <tbody id="tabla-tbody"></tbody>
+          </table>
+        </div>
+        <p class="note" style="margin-top:8px">El .xlsx incluye: hoja <strong>Calendario</strong>, hoja <strong>RAs y CEs</strong> y (si planificaste) hoja <strong>Planificación por RAs</strong>.</p>
+      </div>
+    </div>
+
+    <!-- ========= ADMIN VIEW CUADERNO ========= -->
+    <div id="admin-cuaderno-view" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn ghost small" id="btn-back-cuadernos">← Volver</button>
+        <h2 style="margin:0" id="admin-cuaderno-title">Cuaderno de —</h2>
+      </div>
+      <div id="admin-cuaderno-content"></div>
+    </div>
+
+  </div><!-- /wrap -->
+</div><!-- /app -->
+
+<!-- ========= MODALS ========= -->
+<div id="modal-overlay" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal-box">
+    <h3 id="modal-title"></h3>
+    <div id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<script>
+const byId = id => document.getElementById(id);
+const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const RA_COLORS = [
+  { bg:'#dbeafe', border:'#3b82f6', text:'#1d4ed8', badge:'#3b82f6' },
+  { bg:'#d1fae5', border:'#059669', text:'#065f46', badge:'#059669' },
+  { bg:'#fce7f3', border:'#db2777', text:'#9d174d', badge:'#db2777' },
+  { bg:'#fef3c7', border:'#d97706', text:'#92400e', badge:'#d97706' },
+  { bg:'#ede9fe', border:'#7c3aed', text:'#4c1d95', badge:'#7c3aed' },
+  { bg:'#cffafe', border:'#0891b2', text:'#155e75', badge:'#0891b2' },
+  { bg:'#ffedd5', border:'#ea580c', text:'#7c2d12', badge:'#ea580c' },
+  { bg:'#dcfce7', border:'#16a34a', text:'#14532d', badge:'#16a34a' },
+];
+
+// === UTIL ===
+function fmtDate(d) { return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
+function isoDate(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parseHM(hm) { const [h,m] = hm.split(':').map(Number); return h*60+m; }
+function horasEntre(h1,h2) { return (parseHM(h2)-parseHM(h1))/60; }
+function esc(s) { return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+function fmtDateTime(str) {
+  if (!str) return '—';
+  const d = new Date(str); if (isNaN(d)) return str;
+  return d.toLocaleDateString('es-ES')+' '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+}
+
+// === AUTH ===
+const TOKEN_KEY = 'cuaderno_token';
+let currentUser = null;
+
+function getToken() { return localStorage.getItem(TOKEN_KEY); }
+function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
+function clearToken() { localStorage.removeItem(TOKEN_KEY); }
+
+async function apiFetch(url, opts = {}) {
+  const token = getToken();
+  const headers = { 'Content-Type': 'application/json', ...opts.headers };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  return fetch(url, { ...opts, headers });
+}
+
+async function checkAuth() {
+  const token = getToken();
+  if (!token) { showLogin(); return; }
+  try {
+    const res = await apiFetch('/api/me');
+    if (!res.ok) throw new Error();
+    currentUser = await res.json();
+    await showApp();
+  } catch {
+    clearToken();
+    showLogin();
+  }
+}
+
+function showLogin() {
+  byId('login-screen').style.display = 'flex';
+  byId('app').style.display = 'none';
+}
+
+async function showApp() {
+  byId('login-screen').style.display = 'none';
+  byId('app').style.display = 'block';
+
+  byId('header-username').textContent = currentUser.display_name || currentUser.username;
+  const roleBadge = byId('header-role');
+  roleBadge.textContent = currentUser.role === 'admin' ? 'Admin' : 'Docente';
+  roleBadge.className = 'role-badge' + (currentUser.role === 'admin' ? ' admin' : '');
+
+  if (currentUser.role === 'admin') {
+    byId('btn-admin-panel').style.display = 'inline-flex';
+    byId('btn-my-cuaderno').style.display = 'inline-flex';
+    showAdminPanel();
+  } else {
+    byId('btn-admin-panel').style.display = 'none';
+    byId('btn-my-cuaderno').style.display = 'none';
+    await loadAndShowDocente();
+  }
+}
+
+// === LOGIN ===
+byId('login-btn').onclick = async () => {
+  const username = byId('login-user').value.trim();
+  const password = byId('login-pass').value;
+  byId('login-error').textContent = '';
+  if (!username || !password) { byId('login-error').textContent = 'Introduce usuario y contraseña.'; return; }
+  byId('login-btn').disabled = true;
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión');
+    setToken(data.token);
+    currentUser = data.user;
+    byId('login-pass').value = '';
+    await showApp();
+  } catch (e) {
+    byId('login-error').textContent = e.message;
+  } finally {
+    byId('login-btn').disabled = false;
+  }
+};
+byId('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') byId('login-btn').click(); });
+byId('login-user').addEventListener('keydown', e => { if (e.key === 'Enter') byId('login-pass').focus(); });
+
+// === HEADER ACTIONS ===
+byId('btn-logout').onclick = () => { clearToken(); currentUser = null; resetDocenteState(); showLogin(); };
+byId('btn-admin-panel').onclick = () => { showAdminPanel(); loadAdminData(); };
+byId('btn-my-cuaderno').onclick = async () => { await loadAndShowDocente(); };
+
+byId('btn-change-pass').onclick = () => {
+  openModal('Cambiar contraseña', `
+    <div class="modal-field"><label>Contraseña actual</label><input type="password" id="m-cur" style="width:100%" /></div>
+    <div class="modal-field"><label>Nueva contraseña</label><input type="password" id="m-new" style="width:100%" /></div>
+    <div id="m-err" style="color:#dc2626;font-size:13px;margin-top:6px;min-height:18px"></div>
+  `, [
+    { text: 'Cancelar', cls: 'ghost', action: closeModal },
+    { text: 'Guardar', cls: 'primary', action: async () => {
+      const cur = byId('m-cur')?.value, nuevo = byId('m-new')?.value;
+      if (!cur || !nuevo) { byId('m-err').textContent = 'Rellena ambos campos.'; return; }
+      try {
+        const res = await apiFetch('/api/me/password', { method: 'PUT', body: JSON.stringify({ current: cur, nuevo }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        closeModal(); alert('Contraseña cambiada correctamente.');
+      } catch (e) { byId('m-err').textContent = e.message; }
+    }}
+  ]);
+  setTimeout(() => byId('m-cur')?.focus(), 50);
+};
+
+// === MODAL ===
+function openModal(title, bodyHTML, buttons) {
+  byId('modal-title').textContent = title;
+  byId('modal-body').innerHTML = bodyHTML;
+  byId('modal-footer').innerHTML = '';
+  buttons.forEach(b => {
+    const btn = document.createElement('button');
+    btn.className = 'btn ' + (b.cls || '');
+    btn.textContent = b.text;
+    btn.onclick = b.action;
+    byId('modal-footer').appendChild(btn);
+  });
+  byId('modal-overlay').style.display = 'flex';
+}
+function closeModal() { byId('modal-overlay').style.display = 'none'; }
+
+// === PANELS ===
+function hideAllPanels() {
+  byId('admin-panel').style.display = 'none';
+  byId('docente-panel').style.display = 'none';
+  byId('admin-cuaderno-view').style.display = 'none';
+}
+
+function showAdminPanel() {
+  hideAllPanels();
+  byId('admin-panel').style.display = 'block';
+  loadAdminData();
+}
+
+async function loadAndShowDocente() {
+  hideAllPanels();
+  byId('docente-panel').style.display = 'block';
+  await loadCuadernoFromServer();
+}
+
+// === ADMIN PANEL ===
+const adminTabs = document.querySelectorAll('.admin-tab');
+adminTabs.forEach(tab => {
+  tab.onclick = () => {
+    adminTabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('[id^="tab-"]').forEach(p => p.style.display = 'none');
+    byId('tab-' + tab.dataset.tab).style.display = 'block';
+    if (tab.dataset.tab === 'cuadernos') loadAdminCuadernos();
+  };
+});
+
+async function loadAdminData() {
+  await loadAdminUsers();
+}
+
+async function loadAdminUsers() {
+  try {
+    const res = await apiFetch('/api/users');
+    const users = await res.json();
+    const tbody = byId('users-tbody');
+    tbody.innerHTML = '';
+    users.forEach(u => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${esc(u.display_name || u.username)}</strong></td>
+        <td><span class="muted">${esc(u.username)}</span></td>
+        <td><span class="badge badge-${u.role}">${u.role === 'admin' ? 'Admin' : 'Docente'}</span></td>
+        <td class="muted">${fmtDateTime(u.created_at)}</td>
+        <td>
+          ${u.role !== 'admin' ? `
+            <button class="btn ghost small" onclick="editUser(${u.id},'${esc(u.display_name||u.username)}')">✏️ Editar</button>
+            <button class="btn danger small" onclick="deleteUser(${u.id},'${esc(u.display_name||u.username)}')">🗑</button>
+          ` : '<span class="muted">—</span>'}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    byId('users-tbody').innerHTML = '<tr><td colspan="5" class="muted">Error cargando usuarios.</td></tr>';
+  }
+}
+
+byId('btn-add-user').onclick = () => {
+  openModal('Nuevo docente', `
+    <div class="modal-field"><label>Nombre completo</label><input type="text" id="m-name" placeholder="Ana García" style="width:100%" /></div>
+    <div class="modal-field"><label>Usuario (login)</label><input type="text" id="m-user" placeholder="ana.garcia" style="width:100%" /></div>
+    <div class="modal-field"><label>Contraseña</label><input type="password" id="m-pass" style="width:100%" /></div>
+    <div id="m-err" style="color:#dc2626;font-size:13px;margin-top:6px;min-height:18px"></div>
+  `, [
+    { text: 'Cancelar', cls: 'ghost', action: closeModal },
+    { text: 'Crear docente', cls: 'primary', action: async () => {
+      const display_name = byId('m-name')?.value.trim();
+      const username = byId('m-user')?.value.trim();
+      const password = byId('m-pass')?.value;
+      if (!username || !password || !display_name) { byId('m-err').textContent = 'Rellena todos los campos.'; return; }
+      try {
+        const res = await apiFetch('/api/users', { method: 'POST', body: JSON.stringify({ username, password, display_name }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        closeModal(); await loadAdminUsers();
+      } catch (e) { byId('m-err').textContent = e.message; }
+    }}
+  ]);
+  setTimeout(() => byId('m-name')?.focus(), 50);
+};
+
+function editUser(id, currentName) {
+  openModal('Editar docente', `
+    <div class="modal-field"><label>Nombre completo</label><input type="text" id="m-name" value="${esc(currentName)}" style="width:100%" /></div>
+    <div class="modal-field"><label>Nueva contraseña (dejar vacío = no cambiar)</label><input type="password" id="m-pass" placeholder="Nueva contraseña…" style="width:100%" /></div>
+    <div id="m-err" style="color:#dc2626;font-size:13px;margin-top:6px;min-height:18px"></div>
+  `, [
+    { text: 'Cancelar', cls: 'ghost', action: closeModal },
+    { text: 'Guardar', cls: 'primary', action: async () => {
+      const display_name = byId('m-name')?.value.trim();
+      const password = byId('m-pass')?.value;
+      try {
+        const res = await apiFetch('/api/users/'+id, { method: 'PUT', body: JSON.stringify({ display_name, password: password||undefined }) });
+        if (!res.ok) throw new Error((await res.json()).error);
+        closeModal(); await loadAdminUsers();
+      } catch (e) { byId('m-err').textContent = e.message; }
+    }}
+  ]);
+  setTimeout(() => byId('m-name')?.focus(), 50);
+}
+
+function deleteUser(id, name) {
+  openModal('Eliminar docente', `<p>¿Eliminar a <strong>${esc(name)}</strong> y todos sus datos? Esta acción no se puede deshacer.</p>`, [
+    { text: 'Cancelar', cls: 'ghost', action: closeModal },
+    { text: 'Eliminar', cls: 'danger', action: async () => {
+      try {
+        const res = await apiFetch('/api/users/'+id, { method: 'DELETE' });
+        if (!res.ok) throw new Error((await res.json()).error);
+        closeModal(); await loadAdminUsers();
+      } catch (e) { alert(e.message); }
+    }}
+  ]);
+}
+
+async function loadAdminCuadernos() {
+  const container = byId('cuadernos-list');
+  container.innerHTML = '<p class="empty-state">Cargando...</p>';
+  try {
+    const res = await apiFetch('/api/cuadernos');
+    const list = await res.json();
+    if (!list.length) { container.innerHTML = '<p class="empty-state">No hay cuadernos creados todavía.</p>'; return; }
+    container.innerHTML = '';
+    list.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'cuaderno-card';
+      div.innerHTML = `
+        <div style="width:40px;height:40px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📋</div>
+        <div class="cuaderno-info">
+          <div class="cuaderno-name">${esc(c.display_name || c.username)}</div>
+          <div class="cuaderno-meta">
+            ${esc(c.title || 'Mi Cuaderno')} ·
+            ${c.has_data ? '<span style="color:#059669">Con datos</span>' : '<span style="color:#94a3b8">Sin datos</span>'} ·
+            Actualizado: ${fmtDateTime(c.updated_at)}
+          </div>
+        </div>
+        <button class="btn ghost small" onclick="viewAdminCuaderno(${c.id},'${esc(c.display_name||c.username)}')">👁 Ver</button>
+      `;
+      container.appendChild(div);
+    });
+  } catch {
+    container.innerHTML = '<p class="empty-state">Error cargando cuadernos.</p>';
+  }
+}
+
+async function viewAdminCuaderno(id, name) {
+  hideAllPanels();
+  byId('admin-cuaderno-view').style.display = 'block';
+  byId('admin-cuaderno-title').textContent = 'Cuaderno de ' + name;
+  byId('admin-cuaderno-content').innerHTML = '<p class="empty-state">Cargando...</p>';
+
+  try {
+    const res = await apiFetch('/api/cuadernos/'+id);
+    const data = await res.json();
+    renderAdminCuaderno(data);
+  } catch {
+    byId('admin-cuaderno-content').innerHTML = '<p class="muted">Error al cargar el cuaderno.</p>';
+  }
+}
+
+byId('btn-back-cuadernos').onclick = () => {
+  hideAllPanels();
+  byId('admin-panel').style.display = 'block';
+  byId('tab-cuadernos').style.display = 'block';
+  document.querySelector('[data-tab="cuadernos"]').click();
+};
+
+function renderAdminCuaderno(data) {
+  const s = data.state_json || {};
+  const rows = data.calendar_json || [];
+  let html = `<div class="card" style="margin-bottom:12px">
+    <h2>${esc(data.title || 'Mi Cuaderno')}</h2>
+    <div class="grid cols-2">`;
+
+  if (s.inicio && s.fin) html += `<div><label>Curso</label><strong>${s.inicio} → ${s.fin}</strong></div>`;
+  if (s.modulos?.length) {
+    html += `<div><label>Módulos (${s.modulos.length})</label>${s.modulos.map(m=>`<div class="chip" style="margin:2px">${esc(m.nombre)} · ${DIAS[m.dow]} · ${m.inicio}–${m.fin}</div>`).join('')}</div>`;
+  }
+  if (s.RAs?.length) {
+    html += `<div><label>RAs definidos (${s.RAs.length})</label>${s.RAs.map(ra=>`<span class="chip">${esc(ra.num)}</span>`).join('')}</div>`;
+  }
+  html += `</div></div>`;
+
+  if (rows.length) {
+    html += `<div class="card"><h2>Calendario</h2><div class="table-wrap"><table>
+      <thead><tr><th>Fecha</th><th>Día</th><th>Tipo</th><th>Módulo</th><th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>RA</th></tr></thead>
+      <tbody>`;
+    rows.forEach(r => {
+      let badge = '';
+      if (r.tipo==='festivo') badge='<span class="badge badge-festivo">Festivo</span>';
+      else if (r.tipo==='eval') badge='<span class="badge badge-eval">Evaluación</span>';
+      else if (r.tipo==='feoe') badge='<span class="badge badge-feoe">FEOE</span>';
+      else if (r.tipo==='clase') badge='<span class="badge badge-clase">Clase</span>';
+      html += `<tr class="${r.tipo==='festivo'||r.tipo==='eval'?'holiday':r.tipo==='feoe'?'feoe-row':''}">
+        <td>${r.fecha}</td><td>${r.dia}</td><td>${badge}</td><td>${esc(r.modulo)}</td>
+        <td>${r.inicio}</td><td>${r.fin}</td><td>${r.horas||''}</td>
+        <td>${esc(r.obs||'')}</td><td>${esc(r.raNum||'')}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div></div>';
+  } else {
+    html += '<div class="card"><p class="empty-state">Este docente aún no ha generado el calendario.</p></div>';
+  }
+
+  byId('admin-cuaderno-content').innerHTML = html;
+}
+
+// === STATE (DOCENTE) ===
+let isLoading = false;
+let saveTimer = null;
+const festivos = new Map(), feoes = new Map(), evaluaciones = new Map();
+const modulos = [], RAs = [];
+let planMap = new Map(), lastAsignaciones = [], ceTempList = [], pendingImport = [];
+let calendarRows = [];
+
+function resetDocenteState() {
+  festivos.clear(); feoes.clear(); evaluaciones.clear();
+  modulos.splice(0); RAs.splice(0); planMap = new Map();
+  lastAsignaciones = []; ceTempList = []; calendarRows = [];
+}
+
+function getState() {
+  return {
+    inicio: byId('inicio')?.value || '',
+    fin: byId('fin')?.value || '',
+    title: byId('cuaderno-title')?.value || '',
+    festivos: Array.from(festivos.entries()),
+    feoes: Array.from(feoes.entries()),
+    evaluaciones: Array.from(evaluaciones.entries()),
+    modulos: [...modulos],
+    RAs: [...RAs],
+    planMap: Array.from(planMap.entries()),
+    lastAsignaciones: lastAsignaciones
+  };
+}
+
+function restoreState(s) {
+  if (!s || typeof s !== 'object') return;
+  isLoading = true;
+  if (s.title && byId('cuaderno-title')) byId('cuaderno-title').value = s.title;
+  if (s.inicio && byId('inicio')) byId('inicio').value = s.inicio;
+  if (s.fin && byId('fin')) byId('fin').value = s.fin;
+  festivos.clear();
+  if (Array.isArray(s.festivos)) s.festivos.forEach(([k,v]) => festivos.set(k,v));
+  feoes.clear();
+  if (Array.isArray(s.feoes)) s.feoes.forEach(([k,v]) => feoes.set(k,v));
+  evaluaciones.clear();
+  if (Array.isArray(s.evaluaciones)) s.evaluaciones.forEach(([k,v]) => evaluaciones.set(k,v));
+  modulos.splice(0);
+  if (Array.isArray(s.modulos)) s.modulos.forEach(m => modulos.push(m));
+  RAs.splice(0);
+  if (Array.isArray(s.RAs)) s.RAs.forEach(ra => RAs.push(ra));
+  planMap = new Map(Array.isArray(s.planMap) ? s.planMap : []);
+  lastAsignaciones = Array.isArray(s.lastAsignaciones) ? s.lastAsignaciones : [];
+  renderFestivos(); renderFeoes(); renderEvals(); renderModulos(); renderRAs();
+  isLoading = false;
+}
+
+// === AUTO-SAVE ===
+function setSaveStatus(status) {
+  const el = byId('save-status');
+  if (!el) return;
+  const map = {
+    pending: ['● Sin guardar', 'save-warn'],
+    saving:  ['⟳ Guardando…', 'save-info'],
+    ok:      ['✓ Guardado',    'save-ok'],
+    err:     ['✕ Error',       'save-err']
+  };
+  const [text, cls] = map[status] || ['', ''];
+  el.textContent = text;
+  el.className = 'save-status ' + cls;
+}
+
+function scheduleAutoSave() {
+  if (isLoading) return;
+  setSaveStatus('pending');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(doSave, 1500);
+}
+
+async function doSave() {
+  try {
+    setSaveStatus('saving');
+    const state = getState();
+    const res = await apiFetch('/api/cuaderno', {
+      method: 'PUT',
+      body: JSON.stringify({ title: state.title, state_json: state, calendar_json: calendarRows })
+    });
+    if (!res.ok) throw new Error();
+    setSaveStatus('ok');
+    setTimeout(() => { if (byId('save-status')?.textContent === '✓ Guardado') byId('save-status').textContent = ''; }, 3000);
+  } catch {
+    setSaveStatus('err');
+  }
+}
+
+async function loadCuadernoFromServer() {
+  try {
+    const res = await apiFetch('/api/cuaderno');
+    if (!res.ok) return;
+    const data = await res.json();
+    restoreState(data.state_json);
+    if (Array.isArray(data.calendar_json) && data.calendar_json.length) {
+      calendarRows = data.calendar_json;
+      renderCalendarFromRows(calendarRows);
+    }
+  } catch {}
+}
+
+// Watch title changes
+document.addEventListener('DOMContentLoaded', () => {
+  const titleEl = byId('cuaderno-title');
+  if (titleEl) titleEl.addEventListener('input', scheduleAutoSave);
+});
+
+// Watch date changes
+['inicio','fin'].forEach(id => {
+  const el = byId(id);
+  if (el) el.addEventListener('change', scheduleAutoSave);
+});
+
+// === RENDER CHIPS ===
+function mkChip(html, onDel, cls='') {
+  const c = document.createElement('span');
+  c.className = 'chip' + (cls?' '+cls:'');
+  const s = document.createElement('span'); s.innerHTML = html; c.appendChild(s);
+  const x = document.createElement('button'); x.textContent = '✕'; x.onclick = onDel; c.appendChild(x);
+  return c;
+}
+
+function renderFestivos() {
+  byId('festivosList').innerHTML = '';
+  Array.from(festivos.entries()).sort((a,b) => a[0].localeCompare(b[0])).forEach(([iso,m]) => {
+    byId('festivosList').appendChild(mkChip(`🎌 ${iso}${m?' · '+esc(m):''}`, () => { festivos.delete(iso); renderFestivos(); scheduleAutoSave(); }));
+  });
+}
+function renderFeoes() {
+  byId('feoeList').innerHTML = '';
+  Array.from(feoes.entries()).sort((a,b) => a[0].localeCompare(b[0])).forEach(([iso,e]) => {
+    byId('feoeList').appendChild(mkChip(`🏭 ${iso}${e?' · '+esc(e):''}`, () => { feoes.delete(iso); renderFeoes(); scheduleAutoSave(); }, 'feoe-chip'));
+  });
+}
+function renderEvals() {
+  byId('evalsList').innerHTML = '';
+  Array.from(evaluaciones.entries()).sort((a,b) => a[0].localeCompare(b[0])).forEach(([iso,info]) => {
+    byId('evalsList').appendChild(mkChip(`📝 ${iso} · ${esc(info.desc||'Evaluación')}${info.bloquea?' · Bloquea':''}`, () => { evaluaciones.delete(iso); renderEvals(); scheduleAutoSave(); }));
+  });
+}
+function renderModulos() {
+  byId('modulosList').innerHTML = '';
+  modulos.forEach((m, idx) => {
+    byId('modulosList').appendChild(mkChip(`📘 ${esc(m.nombre)} · ${DIAS[m.dow]} · ${m.inicio}–${m.fin}`, () => { modulos.splice(idx,1); renderModulos(); scheduleAutoSave(); }));
+  });
+}
+function renderCeTemp() {
+  const el = byId('ceTempList');
+  el.innerHTML = '';
+  if (!ceTempList.length) { el.innerHTML = '<p class="empty-state">Sin CEs añadidos aún.</p>'; return; }
+  ceTempList.forEach((ce,idx) => {
+    const d = document.createElement('div'); d.className = 'ce-item';
+    d.innerHTML = `<span class="ce-badge">${esc(ce.num)}</span><span class="ce-text">${esc(ce.desc)}</span>`;
+    const rm = document.createElement('button'); rm.className='btn small danger'; rm.textContent='✕';
+    rm.onclick = () => { ceTempList.splice(idx,1); renderCeTemp(); };
+    d.appendChild(rm); el.appendChild(d);
+  });
+}
+function raCardHTML(ra, withDel, idx) {
+  const ceHTML = ra.ces.length
+    ? ra.ces.map(ce => `<div class="ce-item"><span class="ce-badge">${esc(ce.num)}</span><span class="ce-text">${esc(ce.desc)}</span></div>`).join('')
+    : '<p class="empty-state">Sin CEs asociados.</p>';
+  return `<div class="ra-card-header">
+    <span class="ra-badge">${esc(ra.num)}</span>
+    <span class="ra-title">${esc(ra.contenido)}</span>
+    ${withDel ? `<button class="btn small danger" data-idx="${idx}">✕</button>` : ''}
+  </div><div class="ce-list">${ceHTML}</div>`;
+}
+function renderRAs() {
+  const c = byId('raContainer'); c.innerHTML = '';
+  if (!RAs.length) { c.innerHTML = '<p class="empty-state">No hay RAs definidos todavía.</p>'; refreshAccordion(); return; }
+  RAs.forEach((ra,idx) => {
+    const card = document.createElement('div');
+    card.className = 'ra-card ra-color-' + (idx % 8);
+    card.innerHTML = raCardHTML(ra, true, idx);
+    card.querySelector('[data-idx]').onclick = () => { RAs.splice(idx,1); renderRAs(); scheduleAutoSave(); };
+    c.appendChild(card);
+  });
+  refreshAccordion();
+}
+
+// === ACCORDION ===
+const raAccBody = byId('raAccBody');
+raAccBody.style.maxHeight = raAccBody.scrollHeight + 'px';
+byId('raAccHeader').onclick = () => {
+  byId('raAccHeader').classList.toggle('open');
+  raAccBody.style.maxHeight = byId('raAccHeader').classList.contains('open') ? raAccBody.scrollHeight + 'px' : '0';
+};
+function refreshAccordion() {
+  if (byId('raAccHeader').classList.contains('open')) raAccBody.style.maxHeight = raAccBody.scrollHeight + 'px';
+}
+
+// === EVENTS: add items ===
+byId('addFestivo').onclick = () => {
+  const fI = byId('festivoInicio').value, fF = byId('festivoFin').value || fI;
+  if (!fI) return alert('Añade al menos fecha inicio');
+  const dI = new Date(fI+'T00:00:00'), dF = new Date(fF+'T00:00:00');
+  if (dF < dI) return alert('Fecha fin debe ser >= inicio');
+  const m = byId('festivoMotivo').value || '';
+  for (let t = dI.getTime(); t <= dF.getTime(); t += 86400000) festivos.set(isoDate(new Date(t)), m);
+  byId('festivoInicio').value = ''; byId('festivoFin').value = ''; byId('festivoMotivo').value = '';
+  renderFestivos(); scheduleAutoSave();
+};
+byId('addFeoe').onclick = () => {
+  const fI = byId('feoeInicio').value, fF = byId('feoeFin').value || fI;
+  if (!fI) return alert('Añade al menos fecha inicio');
+  const dI = new Date(fI+'T00:00:00'), dF = new Date(fF+'T00:00:00');
+  if (dF < dI) return alert('Fecha fin debe ser >= inicio');
+  const e = byId('feoeMotivo').value || '';
+  for (let t = dI.getTime(); t <= dF.getTime(); t += 86400000) feoes.set(isoDate(new Date(t)), e);
+  byId('feoeInicio').value = ''; byId('feoeFin').value = ''; byId('feoeMotivo').value = '';
+  renderFeoes(); scheduleAutoSave();
+};
+byId('addEval').onclick = () => {
+  const f = byId('evalFecha').value; if (!f) return alert('Añade la fecha');
+  evaluaciones.set(f, { desc: byId('evalDesc').value||'Evaluación', bloquea: !!byId('evalBloquea').checked });
+  byId('evalFecha').value = ''; byId('evalDesc').value = ''; byId('evalBloquea').checked = false;
+  renderEvals(); scheduleAutoSave();
+};
+byId('addModulo').onclick = () => {
+  const n = byId('moduloNombre').value.trim(), dow = Number(byId('moduloDia').value);
+  const ini = byId('moduloInicio').value, fin = byId('moduloFin').value;
+  if (!n) return alert('Indica nombre del módulo');
+  if (!ini || !fin) return alert('Indica horas');
+  if (parseHM(fin) <= parseHM(ini)) return alert('Hora fin debe ser > inicio');
+  modulos.push({ nombre: n, dow, inicio: ini, fin });
+  byId('moduloNombre').value = '';
+  renderModulos(); scheduleAutoSave();
+};
+byId('limpiarTodo').onclick = () => {
+  if (!confirm('¿Vaciar todo el cuaderno?')) return;
+  byId('inicio').value = ''; byId('fin').value = '';
+  festivos.clear(); renderFestivos(); feoes.clear(); renderFeoes();
+  evaluaciones.clear(); renderEvals(); modulos.splice(0); renderModulos();
+  RAs.splice(0); renderRAs(); ceTempList = []; renderCeTemp();
+  planMap = new Map(); lastAsignaciones = []; calendarRows = [];
+  byId('tabla-tbody').innerHTML = '';
+  byId('salida').style.display = 'none';
+  byId('salidaPlan').style.display = 'none';
+  scheduleAutoSave();
+};
+byId('addCeTemp').onclick = () => {
+  const n = byId('ceNum').value.trim(), d = byId('ceDesc').value.trim();
+  if (!n || !d) return alert('Rellena código y descripción del CE');
+  ceTempList.push({ num: n, desc: d });
+  byId('ceNum').value = ''; byId('ceDesc').value = '';
+  renderCeTemp(); refreshAccordion();
+};
+byId('addRa').onclick = () => {
+  const n = byId('raNum').value.trim(), c = byId('raContenido').value.trim();
+  if (!n || !c) return alert('Rellena número y contenido del RA');
+  RAs.push({ num: n, contenido: c, ces: [...ceTempList] });
+  byId('raNum').value = ''; byId('raContenido').value = '';
+  ceTempList = []; renderCeTemp(); renderRAs(); scheduleAutoSave();
+};
+byId('ceDesc').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); byId('addCeTemp').click(); }});
+byId('raContenido').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); byId('addRa').click(); }});
+
+// === IMPORT FROM CATEDU ===
+function setStatus(html, cls='') {
+  const el = byId('importStatus'); el.className = cls?'status-'+cls:''; el.innerHTML = html;
+}
+
+function parseRAsFromDoc(doc) {
+  const result = [];
+  const raCards = doc.querySelectorAll('.ra-card');
+  if (raCards.length) {
+    raCards.forEach(card => {
+      const numEl = card.querySelector('.text-muted');
+      const numRaw = numEl ? numEl.textContent.trim() : '';
+      const numMatch = numRaw.match(/\(?(RA\s*\d+)\)?/i);
+      const num = numMatch ? numMatch[1].replace(/\s+/g,'').toUpperCase() : 'RA?';
+      const strongEl = card.querySelector('strong');
+      let contenido = '';
+      if (strongEl) { const cl=strongEl.cloneNode(true); cl.querySelectorAll('.text-muted').forEach(e=>e.remove()); contenido=cl.textContent.trim().replace(/\s+/g,' '); }
+      if (!contenido) { const pEl=card.querySelector('p'); if (pEl) { const cl=pEl.cloneNode(true); cl.querySelectorAll('.text-muted').forEach(e=>e.remove()); contenido=cl.textContent.trim().replace(/\s+/g,' '); }}
+      const ces = [];
+      card.querySelectorAll('li.ce-item').forEach(li => {
+        const letterEl=li.querySelector('.ce-letter'); const letra=letterEl?letterEl.textContent.trim():'';
+        const cl=li.cloneNode(true); cl.querySelectorAll('.ce-letter').forEach(e=>e.remove());
+        const desc=cl.textContent.trim().replace(/\s+/g,' ');
+        if (desc.length>3) ces.push({num:letra||'–',desc});
+      });
+      if (contenido) result.push({num,contenido,ces});
+    });
+    if (result.length) return result;
+  }
+  const BL = new Set(['DIV','P','LI','TR','TD','TH','H1','H2','H3','H4','H5','H6','BR','SECTION','ARTICLE','DT','DD','BLOCKQUOTE']);
+  let raw = '';
+  function walk(node) {
+    if (node.nodeType===3) raw+=node.textContent;
+    else if (node.nodeType===1) {
+      if (['SCRIPT','STYLE','NAV','FOOTER'].includes(node.tagName)) return;
+      if (BL.has(node.tagName)) raw+='\n'; node.childNodes.forEach(walk); if (BL.has(node.tagName)) raw+='\n';
+    }
+  }
+  walk(doc.body||doc.documentElement);
+  const lines=raw.split(/\r?\n/).map(l=>l.trim().replace(/\s+/g,' ')).filter(l=>l.length>0);
+  const seen=new Set(); let cur=null;
+  const reRA=/^(RA\s*\d+)\s*[:\.\-\)\u2013]?\s*(.*)/i;
+  const reCE=/^(CE\s*\d+[\.\-]\d+)\s*[:\.\-\)\u2013]?\s*(.*)/i;
+  const reCEn=/^(\d+[\.\-]\d+[\.\-]?\d*)\s*[:\.\-\)\u2013]\s+(.+)/i;
+  const reLet=/^([a-zA-Z]\s*[\.\)\-\u2013])\s+(.{8,})/;
+  for (let i=0;i<lines.length;i++) {
+    const line=lines[i];
+    const raM=line.match(reRA);
+    if (raM) {
+      const num=raM[1].replace(/\s/g,'').toUpperCase();
+      if (seen.has(num)) continue; seen.add(num);
+      let contenido=(raM[2]||'').trim();
+      if (!contenido&&i+1<lines.length&&!lines[i+1].match(reRA)&&!lines[i+1].match(reCE)) {contenido=lines[i+1];i++;}
+      cur={num,contenido:contenido||line,ces:[]}; result.push(cur); continue;
+    }
+    if (!cur) continue;
+    const ceM=line.match(reCE)||line.match(reCEn)||line.match(reLet);
+    if (ceM) {const n2=ceM[1].trim(),d2=(ceM[2]||'').trim();if(d2.length>3&&!cur.ces.find(c=>c.num===n2))cur.ces.push({num:n2,desc:d2});}
+  }
+  return result;
+}
+
+async function fetchHTML(url) {
+  try { const r=await fetch(url,{mode:'cors',credentials:'omit'}); if(r.ok) return {html:await r.text(),via:'directo'}; } catch {}
+  try { const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url),{cache:'no-store'}); if(r.ok){const j=await r.json();if(j.contents)return{html:j.contents,via:'allorigins'};}} catch {}
+  try { const r=await fetch('https://corsproxy.io/?'+encodeURIComponent(url)); if(r.ok) return {html:await r.text(),via:'corsproxy.io'}; } catch {}
+  throw new Error('No se pudo acceder a la URL. Comprueba tu conexión.');
+}
+
+byId('importarUrl').onclick = async () => {
+  const url = byId('importUrl').value.trim();
+  if (!url) return alert('Pega primero la URL del módulo');
+  if (!url.startsWith('http')) return alert('La URL debe empezar por http:// o https://');
+  const btn = byId('importarUrl'); btn.disabled = true;
+  byId('importPreview').style.display = 'none';
+  setStatus('<span class="spinner"></span><span class="status-loading">Conectando con CATEDU…</span>');
+  try {
+    const {html,via} = await fetchHTML(url);
+    if (!html) throw new Error('La página devolvió contenido vacío.');
+    setStatus('<span class="spinner"></span><span class="status-loading">Analizando RAs y CEs…</span>');
+    const doc = (new DOMParser()).parseFromString(html,'text/html');
+    const found = parseRAsFromDoc(doc);
+    if (!found.length) {
+      const snippet=(doc.body?doc.body.textContent:'').replace(/\s{3,}/g,' ').trim().slice(0,2000);
+      setStatus(`<span class="status-err">⚠ No se encontraron RAs (via ${esc(via)}). La página puede requerir login.</span>`);
+      btn.disabled=false; return;
+    }
+    pendingImport = found;
+    const prev = byId('importPreviewList'); prev.innerHTML='';
+    found.forEach(ra => { const c=document.createElement('div');c.className='ra-card preview';c.innerHTML=raCardHTML(ra,false,-1);prev.appendChild(c); });
+    byId('importPreview').style.display='block';
+    setStatus(`✅ ${found.length} RA(s) encontrado(s) (via ${esc(via)}). Revisa y confirma abajo.`,'ok');
+    refreshAccordion();
+  } catch(err) { setStatus('❌ '+esc(err.message),'err'); }
+  btn.disabled=false;
+};
+byId('confirmarImport').onclick = () => {
+  if (!pendingImport.length) return;
+  pendingImport.forEach(ra => RAs.push(ra)); pendingImport=[];
+  byId('importPreview').style.display='none'; byId('importUrl').value='';
+  setStatus('✅ RAs añadidos al cuaderno.','ok');
+  renderRAs(); scheduleAutoSave();
+  setTimeout(()=>{byId('importStatus').innerHTML=''},4000);
+};
+byId('cancelarImport').onclick = () => { pendingImport=[]; byId('importPreview').style.display='none'; setStatus(''); refreshAccordion(); };
+
+// === GENERATE CALENDAR ===
+function generateRows(dIni, dFin) {
+  const rows=[], oneDay=86400000;
+  let stats={totEval:0,totSes:0,totalHoras:0,countFestivos:0,countFeoe:0,diasTotales:0};
+  for (let t=dIni.getTime(); t<=dFin.getTime(); t+=oneDay) {
+    const d=new Date(t), iso=isoDate(d), dia=DIAS[d.getDay()];
+    const isF=festivos.has(iso), isFe=feoes.has(iso), ev=evaluaciones.get(iso), isEB=!!(ev&&ev.bloquea);
+    if (isF) stats.countFestivos++; if (isFe) stats.countFeoe++;
+    if (ev) { rows.push({tipo:'eval',iso,fecha:fmtDate(d),dia,modulo:'—',inicio:'—',fin:'—',horas:'',obs:'Evaluación: '+(ev.desc||''),raNum:''}); stats.totEval++; }
+    const ses=[];
+    if (!isF&&!isFe&&!isEB) modulos.forEach(m => {
+      if (m.dow===d.getDay()) {
+        const h=horasEntre(m.inicio,m.fin);
+        ses.push({tipo:'clase',iso,fecha:fmtDate(d),dia,modulo:m.nombre,inicio:m.inicio,fin:m.fin,horas:+h.toFixed(2),obs:'',raNum:''});
+      }
+    });
+    if (ses.length) { ses.forEach(r=>{ rows.push(r); stats.totSes++; stats.totalHoras+=r.horas; }); }
+    else if (!ev) {
+      let obs='',tipo='vacio';
+      if (isF) {tipo='festivo';obs='Festivo'+(festivos.get(iso)?': '+festivos.get(iso):'');}
+      else if (isFe) {tipo='feoe';obs='FEOE'+(feoes.get(iso)?': '+feoes.get(iso):'');}
+      rows.push({tipo,iso,fecha:fmtDate(d),dia,modulo:'—',inicio:'—',fin:'—',horas:'',obs,raNum:''});
+    }
+    stats.diasTotales++;
+  }
+  return {rows, stats};
+}
+
+byId('generar').onclick = () => {
+  const ini=byId('inicio').value, fin=byId('fin').value;
+  if (!ini||!fin) return alert('Indica fechas de inicio y fin');
+  const dI=new Date(ini+'T00:00:00'), dF=new Date(fin+'T00:00:00');
+  if (dF<dI) return alert('Fecha fin debe ser >= inicio');
+  if (!modulos.length) return alert('Añade al menos un módulo');
+
+  const {rows, stats} = generateRows(dI, dF);
+
+  // Merge planMap data into rows
+  rows.forEach(r => {
+    const plan = planMap.get(r.iso+'|'+r.modulo);
+    if (plan && !r.raNum) r.raNum = plan.raNum;
+  });
+
+  // Merge existing user edits from calendarRows if same dates
+  const existingMap = new Map(calendarRows.map(r => [r.iso+'|'+r.modulo+'|'+r.tipo, r]));
+  rows.forEach(r => {
+    const key = r.iso+'|'+r.modulo+'|'+r.tipo;
+    const existing = existingMap.get(key);
+    if (existing) {
+      if (existing.obs && existing.obs !== r.obs) r.obs = existing.obs;
+      if (existing.raNum) r.raNum = existing.raNum;
+    }
+  });
+
+  calendarRows = rows;
+  renderCalendarFromRows(rows);
+
+  byId('meta').innerHTML = `<strong>${stats.diasTotales}</strong> días · <strong>${stats.totSes}</strong> sesiones · <strong>${stats.totalHoras.toFixed(2)}</strong> h · Festivos: ${stats.countFestivos} · FEOE: ${stats.countFeoe} · Evaluaciones: ${stats.totEval}`;
+  byId('salida').style.display = 'block';
+  byId('salida').scrollIntoView({behavior:'smooth',block:'start'});
+  scheduleAutoSave();
+};
+
+function renderCalendarFromRows(rows) {
+  const tbody = byId('tabla-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const raOptions = RAs.map(ra => `<option value="${esc(ra.num)}">${esc(ra.num)}</option>`).join('');
+
+  rows.forEach((r, idx) => {
+    const tr = document.createElement('tr');
+    let badge='', cls='';
+    if (r.tipo==='festivo') { badge='<span class="badge badge-festivo">Festivo</span>'; cls='holiday'; }
+    else if (r.tipo==='eval') { badge='<span class="badge badge-eval">Evaluación</span>'; cls='holiday'; }
+    else if (r.tipo==='feoe') { badge='<span class="badge badge-feoe">FEOE</span>'; cls='feoe-row'; }
+    else if (r.tipo==='clase') badge='<span class="badge badge-clase">Clase</span>';
+    else badge='<span class="muted">—</span>';
+    if (cls) tr.classList.add(cls);
+
+    const obsInput = document.createElement('textarea');
+    obsInput.className = 'inline-obs';
+    obsInput.value = r.obs || '';
+    obsInput.rows = 1;
+    obsInput.title = 'Editar observación';
+    obsInput.addEventListener('input', () => {
+      calendarRows[idx].obs = obsInput.value;
+      scheduleAutoSave();
+    });
+
+    const raSelect = document.createElement('select');
+    raSelect.className = 'inline-ra-sel';
+    raSelect.innerHTML = '<option value="">—</option>' + raOptions;
+    raSelect.value = r.raNum || '';
+    raSelect.addEventListener('change', () => {
+      calendarRows[idx].raNum = raSelect.value;
+      scheduleAutoSave();
+    });
+
+    const tdObs = document.createElement('td');
+    tdObs.appendChild(obsInput);
+    const tdRA = document.createElement('td');
+    tdRA.appendChild(raSelect);
+
+    tr.innerHTML = `<td>${r.fecha}</td><td>${r.dia}</td><td>${badge}</td><td>${esc(r.modulo)}</td><td>${r.inicio}</td><td>${r.fin}</td><td>${r.horas||''}</td>`;
+    tr.appendChild(tdObs);
+    tr.appendChild(tdRA);
+    tbody.appendChild(tr);
+  });
+
+  byId('salida').style.display = rows.length ? 'block' : 'none';
+}
+
+// === PLANNING ===
+byId('cerrarPlan').onclick = () => byId('salidaPlan').style.display = 'none';
+
+byId('planificar').onclick = () => {
+  const ini=byId('inicio').value, fin=byId('fin').value;
+  if (!ini||!fin) return alert('Primero indica las fechas del curso (paso 1)');
+  if (!modulos.length) return alert('Añade al menos un módulo (paso 5)');
+  if (!RAs.length) return alert('Añade al menos un RA (apartado 6)');
+  const dI=new Date(ini+'T00:00:00'), dF=new Date(fin+'T00:00:00');
+  if (dF<dI) return alert('Fecha fin debe ser >= inicio');
+
+  const oneDay=86400000, sesiones=[];
+  for (let t=dI.getTime(); t<=dF.getTime(); t+=oneDay) {
+    const d=new Date(t), iso=isoDate(d);
+    const isF=festivos.has(iso), isFe=feoes.has(iso), ev=evaluaciones.get(iso), isEB=!!(ev&&ev.bloquea);
+    if (isF||isFe||isEB) continue;
+    modulos.forEach(m => {
+      if (m.dow===d.getDay()) sesiones.push({iso,fecha:fmtDate(d),dia:DIAS[d.getDay()],horas:+horasEntre(m.inicio,m.fin).toFixed(2),modulo:m.nombre,inicio:m.inicio,fin:m.fin});
+    });
+  }
+  if (!sesiones.length) return alert('No hay sesiones disponibles en ese rango.');
+
+  const totalHoras=sesiones.reduce((a,s)=>a+s.horas,0), totalSes=sesiones.length, nRAs=RAs.length;
+  const pesos=RAs.map(ra=>Math.max(1,ra.ces.length)), totalPeso=pesos.reduce((a,p)=>a+p,0);
+  const sesPorRA=pesos.map(p=>Math.round(totalSes*p/totalPeso));
+  const diff=totalSes-sesPorRA.reduce((a,v)=>a+v,0);
+  if (diff>0) for(let i=0;i<diff;i++) sesPorRA[i]++;
+  if (diff<0) for(let i=0;i<(-diff);i++) sesPorRA[i]--;
+
+  const asignaciones=[]; let sIdx=0;
+  RAs.forEach((ra,raIdx) => {
+    const n=sesPorRA[raIdx], mis=sesiones.slice(sIdx,sIdx+n);
+    asignaciones.push({ra,raIdx,sesiones:mis,horas:mis.reduce((a,s)=>a+s.horas,0)});
+    sIdx+=n;
+  });
+
+  lastAsignaciones=asignaciones;
+  planMap=new Map();
+  asignaciones.forEach(({ra,sesiones:ses}) => ses.forEach(s => planMap.set(s.iso+'|'+s.modulo,{raNum:ra.num,raContenido:ra.contenido})));
+
+  const planContent=byId('planContent'); planContent.innerHTML='';
+
+  // Stats
+  const resumen=document.createElement('div');
+  resumen.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px';
+  [{label:'Sesiones totales',val:totalSes,icon:'📅'},{label:'Horas totales',val:totalHoras.toFixed(1)+'h',icon:'⏱'},{label:'RAs',val:nRAs,icon:'🎯'},{label:'Media por RA',val:(totalSes/nRAs).toFixed(1)+' ses.',icon:'📊'}].forEach(s=>{
+    resumen.innerHTML+=`<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px">${s.icon}</div><div style="font-size:17px;font-weight:700;margin:4px 0">${s.val}</div><div style="font-size:11px;color:var(--muted)">${s.label}</div></div>`;
+  });
+  planContent.appendChild(resumen);
+
+  // Bar
+  const tw=document.createElement('div'); tw.style.marginBottom='16px';
+  let barHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">Distribución proporcional</div><div class="plan-bar">';
+  asignaciones.forEach(({ra,raIdx,sesiones:ses})=>{
+    if(!ses.length)return;
+    const pct=(ses.length/totalSes*100).toFixed(1), col=RA_COLORS[raIdx%8];
+    barHTML+=`<div class="plan-bar-seg" style="flex:${ses.length};background:${col.badge}" title="${esc(ra.num)}: ${ses.length} ses. (${pct}%)">${ra.num}</div>`;
+  });
+  barHTML+='</div><div class="plan-legend">';
+  asignaciones.forEach(({ra,raIdx,sesiones:ses,horas})=>{
+    const col=RA_COLORS[raIdx%8];
+    barHTML+=`<span class="plan-legend-item" style="background:${col.bg};border:1px solid ${col.border};color:${col.text}"><strong>${esc(ra.num)}</strong>${ses.length} ses · ${horas.toFixed(1)}h</span>`;
+  });
+  barHTML+='</div>';
+  tw.innerHTML=barHTML; planContent.appendChild(tw);
+
+  const hr=document.createElement('div'); hr.className='hr'; planContent.appendChild(hr);
+
+  asignaciones.forEach(({ra,raIdx,sesiones:ses,horas})=>{
+    if(!ses.length)return;
+    const col=RA_COLORS[raIdx%8];
+    const card=document.createElement('div');
+    card.style.cssText=`background:${col.bg};border:1px solid ${col.border};border-radius:12px;padding:14px;margin-bottom:10px`;
+    let ceHTML='';
+    if(ra.ces.length){
+      ceHTML='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">';
+      ra.ces.forEach(ce=>{ceHTML+=`<span style="background:#fff;border:1px solid ${col.border};border-radius:5px;padding:2px 7px;font-size:11px;color:${col.text}"><strong>${esc(ce.num)}</strong> ${esc(ce.desc.length>50?ce.desc.slice(0,50)+'…':ce.desc)}</span>`;});
+      ceHTML+='</div>';
+    }
+    const sesId='ses_'+raIdx;
+    const sesRows=ses.map(s=>`<tr><td style="padding:4px 8px;color:var(--muted)">${s.fecha}</td><td style="padding:4px 8px;color:var(--muted)">${s.dia}</td><td style="padding:4px 8px;font-size:12px">${esc(s.modulo)}</td><td style="padding:4px 8px;color:var(--muted)">${s.inicio}–${s.fin}</td><td style="padding:4px 8px;font-weight:600;color:${col.text}">${s.horas}h</td></tr>`).join('');
+    card.innerHTML=`
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+            <span style="background:${col.badge};color:#fff;font-weight:800;border-radius:7px;padding:3px 10px;font-size:13px">${esc(ra.num)}</span>
+            <span style="font-size:13px;font-weight:600;flex:1">${esc(ra.contenido.length>80?ra.contenido.slice(0,80)+'…':ra.contenido)}</span>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:${col.text}">
+            <span>📅 <strong>${ses.length}</strong> sesiones</span>
+            <span>⏱ <strong>${horas.toFixed(1)}h</strong></span>
+            <span>🗓 ${ses[0].fecha} → ${ses[ses.length-1].fecha}</span>
+          </div>${ceHTML}
+        </div>
+        <button onclick="const el=document.getElementById('${sesId}');el.style.display=el.style.display==='none'?'block':'none'" style="background:${col.bg};border:1px solid ${col.border};color:${col.text};border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap">Ver sesiones ▾</button>
+      </div>
+      <div id="${sesId}" style="display:none;margin-top:10px;overflow:auto;max-height:200px;border-radius:8px;border:1px solid ${col.border}">
+        <table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#fff">
+          <th style="padding:5px 8px;text-align:left;color:var(--muted)">Fecha</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Día</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Módulo</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Horario</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Horas</th>
+        </tr></thead><tbody>${sesRows}</tbody></table>
+      </div>`;
+    planContent.appendChild(card);
+  });
+
+  const nota=document.createElement('p');
+  nota.style.cssText='font-size:12px;color:var(--muted);margin-top:4px;font-style:italic';
+  nota.textContent='Distribución ponderada según el número de CEs de cada RA. Genera el calendario para ver la columna «RA Planificado».';
+  planContent.appendChild(nota);
+  byId('salidaPlan').style.display='block';
+  byId('salidaPlan').scrollIntoView({behavior:'smooth',block:'start'});
+  scheduleAutoSave();
+};
+
+// === EXPORT ===
+function dlBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},100);}
+function buildCSV(sep=';'){
+  const h=Array.from(byId('tabla').querySelectorAll('thead th')).map(t=>t.textContent.trim());
+  const b=calendarRows.map(r=>[r.fecha,r.dia,r.tipo,r.modulo,r.inicio,r.fin,r.horas,r.obs||'',r.raNum||'']);
+  const e=s=>'"'+String(s).replace(/"/g,'""')+'"',C='\r\n';
+  return 'sep='+sep+C+[h,...b].map(r=>r.map(e).join(sep)).join(C);
+}
+byId('descargarCSV').onclick=()=>{if(!calendarRows.length)return alert('Primero genera el calendario');dlBlob(new Blob(['\uFEFF'+buildCSV(';')],{type:'text/csv;charset=utf-8'}),'Calendario_Docente.csv');};
+byId('copiarHTML').onclick=async()=>{try{await navigator.clipboard.writeText(byId('tabla').outerHTML);alert('HTML copiado');}catch(e){alert('No se pudo copiar');}};
+
+// XLSX
+function s2u8(str){const o=[];for(let i=0;i<str.length;i++){let c=str.charCodeAt(i);if(c<128)o.push(c);else if(c<2048)o.push(192|(c>>6),128|(c&63));else if(c>=0xD800&&c<=0xDBFF){const c2=str.charCodeAt(++i),cp=((c-0xD800)<<10)+(c2-0xDC00)+0x10000;o.push(240|(cp>>18),128|((cp>>12)&63),128|((cp>>6)&63),128|(cp&63));}else o.push(224|(c>>12),128|((c>>6)&63),128|(c&63));}return new Uint8Array(o);}
+let CT=null;function crc32(u){if(!CT){CT=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);CT[n]=c>>>0;}}let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CT[(c^u[i])&0xFF]^(c>>>8);return(c^0xFFFFFFFF)>>>0;}
+const u16=v=>new Uint8Array([v&255,(v>>>8)&255]),u32=v=>new Uint8Array([v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255]);
+function cat(p){let l=0;p.forEach(x=>l+=x.length);const o=new Uint8Array(l);let off=0;p.forEach(x=>{o.set(x,off);off+=x.length;});return o;}
+function makeZip(files){
+  const lp=[],cp=[];let off=0;
+  files.forEach(f=>{
+    const nm=s2u8(f.name),d=f.data,c=crc32(d),z=u16(0);
+    const lh=cat([u32(0x04034b50),u16(20),z,z,z,z,u32(c),u32(d.length),u32(d.length),u16(nm.length),z,nm]);
+    lp.push(lh,d);
+    cp.push(cat([u32(0x02014b50),u16(20),u16(20),z,z,z,z,u32(c),u32(d.length),u32(d.length),u16(nm.length),z,z,z,z,u32(0),u32(off),nm]));
+    off+=lh.length+d.length;
+  });
+  const cen=cat(cp);
+  return new Blob([cat([...lp,cen,cat([u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),u32(cen.length),u32(off),u16(0)])])],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function colL(n){let s='';n++;while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}return s;}
+function eX(t){return String(t).replace(/[&<>]/g,c=>c==='&'?'&amp;':c==='<'?'&lt;':'&gt;');}
+function wsXML(mx){let rx='';for(let r=0;r<mx.length;r++){let c='';for(let j=0;j<mx[r].length;j++){const v=mx[r][j]==null?'':String(mx[r][j]),ref=colL(j)+(r+1);c+=v===''?`<c r="${ref}"/>`:`<c r="${ref}" t="inlineStr"><is><t>${eX(v)}</t></is></c>`;}rx+=`<row r="${r+1}">${c}</row>`;}return`<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rx}</sheetData></worksheet>`;}
+function raWSXML(){const m=[['Nº RA','Descripción RA','Nº CE','Descripción CE']];RAs.forEach(ra=>{if(!ra.ces.length)m.push([ra.num,ra.contenido,'','']);else ra.ces.forEach((ce,i)=>m.push(i===0?[ra.num,ra.contenido,ce.num,ce.desc]:['','',ce.num,ce.desc]));});return wsXML(m);}
+function wbXML(sh){return`<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sh.map((s,i)=>`<sheet name="${eX(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`;}
+function wbRels(sh){return`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sh.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}</Relationships>`;}
+function rootRels(){return`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`;}
+function ctXML(sh){return`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${sh.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`;}
+function coreXML(){const n=new Date().toISOString();return`<?xml version="1.0" encoding="UTF-8"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>Cuaderno Docente</dc:title><dc:creator>Cuaderno Docente App</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${n}</dcterms:created></cp:coreProperties>`;}
+function appXML(){return`<?xml version="1.0" encoding="UTF-8"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Microsoft Excel</Application></Properties>`;}
+function planWSXML(){
+  if(!lastAsignaciones.length)return null;
+  const m=[['Nº RA','Descripción RA','Total sesiones','Total horas','Fecha inicio','Fecha fin','','CEs (código)','CEs (descripción)']];
+  m.push([]);
+  lastAsignaciones.forEach(({ra,sesiones:ses,horas})=>{
+    if(!ses.length)return;
+    m.push([ra.num,ra.contenido,ses.length,+horas.toFixed(2),ses[0].fecha,ses[ses.length-1].fecha,'',ra.ces[0]?.num||'',ra.ces[0]?.desc||'']);
+    for(let ci=1;ci<ra.ces.length;ci++) m.push(['','','','','','','',ra.ces[ci].num,ra.ces[ci].desc]);
+    m.push([]);
+    m.push(['','Fecha','Día','Módulo','Inicio','Fin','Horas','Nº sesión','']);
+    ses.forEach((s,i)=>m.push(['',s.fecha,s.dia,s.modulo,s.inicio,s.fin,s.horas,i+1,'']));
+    m.push([]); m.push([]);
+  });
+  return wsXML(m);
+}
+byId('descargarXLSX').onclick=()=>{
+  if(!calendarRows.length)return alert('Primero genera el calendario');
+  const h=['Fecha','Día','Tipo','Módulo','Inicio','Fin','Horas','Observaciones','RA Planificado'];
+  const b=calendarRows.map(r=>[r.fecha,r.dia,r.tipo,r.modulo,r.inicio,r.fin,r.horas,r.obs||'',r.raNum||'']);
+  const planXML=planWSXML();
+  const sh=planXML?[{name:'Calendario'},{name:'RAs y CEs'},{name:'Planificación por RAs'}]:[{name:'Calendario'},{name:'RAs y CEs'}];
+  const files=[
+    {name:'[Content_Types].xml',data:s2u8(ctXML(sh))},
+    {name:'_rels/.rels',data:s2u8(rootRels())},
+    {name:'docProps/core.xml',data:s2u8(coreXML())},
+    {name:'docProps/app.xml',data:s2u8(appXML())},
+    {name:'xl/workbook.xml',data:s2u8(wbXML(sh))},
+    {name:'xl/_rels/workbook.xml.rels',data:s2u8(wbRels(sh))},
+    {name:'xl/worksheets/sheet1.xml',data:s2u8(wsXML([h,...b]))},
+    {name:'xl/worksheets/sheet2.xml',data:s2u8(raWSXML())}
+  ];
+  if(planXML)files.push({name:'xl/worksheets/sheet3.xml',data:s2u8(planXML)});
+  dlBlob(makeZip(files),'Cuaderno_Docente.xlsx');
+};
+
+// === INIT ===
+checkAuth();
+</script>
+</body>
+</html>
