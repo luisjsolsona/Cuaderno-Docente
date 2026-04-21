@@ -4,7 +4,7 @@ services:
     container_name: cuaderno-docente
     restart: unless-stopped
     ports:
-      - "7001:3000"
+      - "9000:3000"
     volumes:
       - cuaderno_data:/data
     environment:
@@ -35,6 +35,6 @@ x-casaos:
     - amd64
     - arm64
   category: utilities
-  port_map: "7001"
+  port_map: "9000"
   scheme: http
   index: /

@@ -42,27 +42,22 @@ Aplicación web para crear y gestionar **cuadernos docentes interactivos**. Cada
 
 ---
 
-## Instalación con Docker
+## Instalación
 
-### Docker Compose (recomendado)
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/luisjsolsona/Cuaderno-Docente.git
+cd Cuaderno-Docente
+```
+
+### 2. Arrancar con Docker Compose
 
 ```bash
 docker compose up -d
 ```
 
-La aplicación queda disponible en `http://localhost:7001`
-
-### Docker Run
-
-```bash
-docker run -d \
-  --name cuaderno-docente \
-  -p 7001:3000 \
-  -v cuaderno_data:/data \
-  -e JWT_SECRET=tu_secreto_seguro \
-  -e TZ=Europe/Madrid \
-  ghcr.io/luisjsolsona/cuaderno-docente:latest
-```
+La aplicación queda disponible en `http://localhost:9000`
 
 ### Variables de entorno
 
