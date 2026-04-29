@@ -7,7 +7,7 @@ Aplicación web para crear y gestionar **cuadernos docentes interactivos**. Cada
 ## Características generales
 
 - Generador de calendarios docentes con módulos, festivos, FEOE y evaluaciones
-- Importación automática de RAs y CEs desde el catálogo CATEDU
+- Importación guiada de RAs y CEs desde CATEDU mediante asistente por pasos (Familia → Ciclo → Módulo)
 - Planificación automática ponderada de sesiones por RA
 - Exportación a `.xlsx` (multihojas) y `.csv`
 - Guardado automático en sesión (sin perder datos al recargar)
@@ -77,7 +77,7 @@ La aplicación queda disponible en `http://localhost:9000`
 3. **FEOE** — Marca periodos de Formación en Empresa u Organismo Equiparado
 4. **Evaluaciones** — Añade fechas de evaluación (opcionalmente bloqueantes)
 5. **Módulos** — Define cada módulo con el día de la semana y horario
-6. **RAs y CEs** — Importa automáticamente desde CATEDU o añade manualmente
+6. **RAs y CEs** — Pulsa **🔍 Buscar módulo en CATEDU** para importar mediante asistente (selecciona Familia → Ciclo → Módulo → carga los RAs), o añade manualmente
 7. Pulsa **⚡ Generar calendario** — El resultado se muestra y guarda en el servidor
 8. Edita **Observaciones** y **RA Planificado** directamente en la tabla
 9. Exporta con **⬇ .xlsx** o **⬇ .csv**

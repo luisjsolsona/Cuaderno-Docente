@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
@@ -216,6 +216,44 @@
     .ra-color-5 { border-left: 4px solid #0891b2; }
     .ra-color-6 { border-left: 4px solid #ea580c; }
     .ra-color-7 { border-left: 4px solid #16a34a; }
+
+    /* === CATEDU IMPORT WIZARD === */
+    .hidden { display: none !important; }
+    .import-modal { background: var(--bg2); border-radius: 14px; width: 680px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,0.18); overflow: hidden; }
+    .import-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .import-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+    .import-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text2); padding: 0 4px; }
+    .import-body { flex: 1; overflow-y: auto; }
+    .import-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 14px 24px; border-top: 1px solid var(--border); flex-shrink: 0; }
+    .import-steps { display: flex; align-items: center; gap: 4px; padding: 12px 24px; background: var(--bg3); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; flex-shrink: 0; }
+    .import-step { color: var(--text2); padding: 3px 8px; border-radius: 4px; }
+    .import-step.active { background: var(--accent); color: white; }
+    .import-step.done { color: var(--accent); text-decoration: underline; cursor: pointer; }
+    .import-step-arrow { color: var(--border2); font-size: 16px; }
+    .import-step-panel { padding: 20px 24px; }
+    .import-step-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 14px; }
+    .import-step-status { font-size: 13px; color: var(--text2); margin-bottom: 10px; min-height: 20px; display: flex; align-items: center; gap: 8px; }
+    .import-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+    .import-grid-item { padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.12s; font-size: 13px; background: var(--bg2); }
+    .import-grid-item:hover { border-color: var(--accent); background: var(--bg3); }
+    .import-grid-item .ig-code { font-size: 10px; font-weight: 700; color: var(--text2); font-family: monospace; margin-bottom: 3px; }
+    .import-grid-item .ig-name { font-weight: 500; color: var(--text); line-height: 1.3; }
+    .import-list-catedu { display: flex; flex-direction: column; gap: 5px; }
+    .import-list-item { padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 7px; cursor: pointer; transition: all 0.12s; background: var(--bg2); display: flex; align-items: baseline; gap: 10px; }
+    .import-list-item:hover { border-color: var(--accent); background: var(--bg3); }
+    .import-list-item .il-code { font-size: 11px; font-weight: 700; color: var(--accent); min-width: 50px; font-family: monospace; }
+    .import-list-item .il-name { font-size: 13px; color: var(--text); flex: 1; }
+    .import-list-item .il-meta { font-size: 11px; color: var(--text2); white-space: nowrap; }
+    .spinner-sm { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+    .import-mod-card { background: var(--bg3); border: 1.5px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 4px; display: none; }
+    .import-mod-card.visible { display: block; }
+    .import-mod-title { font-weight: 600; color: var(--accent2); font-size: 14px; }
+    .import-mod-meta { font-size: 12px; color: var(--text2); margin-top: 3px; }
+    .import-ra-status { font-size: 12px; padding: 6px 10px; border-radius: 5px; margin-top: 6px; display: none; }
+    .import-ra-status.show { display: block; }
+    .import-ra-status.loading { background: #eef4ff; color: var(--accent); }
+    .import-ra-status.ok { background: #edfbf2; color: #1a7a3a; }
+    .import-ra-status.err { background: #fef0f0; color: #c00; }
   </style>
 </head>
 <body>
@@ -407,44 +445,14 @@
         <div class="accordion-header open" id="raAccHeader">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:1;min-width:0">
             <h2 style="margin:0">6) Resultados de Aprendizaje (RAs) y Criterios de Evaluación (CEs) 🎯</h2>
-            <a href="https://centrosdocentes.catedu.es/awc/public/pages/familias/index.php"
-               target="_blank" rel="noopener noreferrer"
-               onclick="event.stopPropagation()"
-               style="display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;font-weight:700;font-size:12px;padding:6px 14px;border-radius:999px;text-decoration:none;box-shadow:0 3px 10px rgba(37,99,235,.25);transition:.15s;white-space:nowrap;flex-shrink:0"
-               onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='var(--accent)'">
-              🔍 CONSULTAR RA y CE
-            </a>
+            <button class="btn import-btn" onclick="openCateduImport();event.stopPropagation()" style="font-size:12px;padding:6px 14px;border-radius:999px;white-space:nowrap;flex-shrink:0">
+              🔍 Buscar módulo en CATEDU
+            </button>
           </div>
           <span class="arrow">▼</span>
         </div>
         <div class="accordion-body" id="raAccBody">
           <div class="hr"></div>
-
-          <!-- Import from URL -->
-          <div class="card" style="background:#f0fdf4;border-color:#bbf7d0;margin-bottom:14px">
-            <h3 style="color:var(--accent2);margin:0 0 6px">📥 Importar RAs y CEs automáticamente desde CATEDU</h3>
-            <p style="font-size:13px;color:var(--muted);margin:0 0 10px">
-              <strong>Paso 1:</strong> Pulsa <em>CONSULTAR RA y CE</em> → busca tu ciclo y módulo → copia la URL del navegador.<br>
-              <strong>Paso 2:</strong> Pégala aquí y pulsa <strong>Importar RAs</strong>.
-            </p>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-              <div style="flex:3 1 260px">
-                <label style="margin:0 0 4px">URL del módulo</label>
-                <input type="text" id="importUrl" placeholder="https://centrosdocentes.catedu.es/awc/modulo.php?cod=..." style="width:100%" />
-              </div>
-              <button class="btn import-btn" id="importarUrl" style="flex:0 0 auto;align-self:flex-end">⬇ Importar RAs</button>
-            </div>
-            <div id="importStatus" style="margin-top:10px;font-size:13px;min-height:18px"></div>
-            <div id="importPreview" style="display:none;margin-top:12px">
-              <div class="hr"></div>
-              <p style="font-size:13px;color:var(--accent2);font-weight:600;margin:0 0 10px">Vista previa — revisa y confirma:</p>
-              <div id="importPreviewList" class="ra-container" style="max-height:320px;overflow:auto;padding-right:4px"></div>
-              <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-                <button class="btn success" id="confirmarImport">✅ Añadir al cuaderno</button>
-                <button class="btn ghost" id="cancelarImport">✕ Cancelar</button>
-              </div>
-            </div>
-          </div>
 
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
             <div class="hr" style="flex:1;margin:0"></div>
@@ -533,6 +541,75 @@
 
   </div><!-- /wrap -->
 </div><!-- /app -->
+
+<!-- ========= MODAL: IMPORTACIÓN DESDE CATEDU ========= -->
+<div class="modal-overlay hidden" id="importCateduModal" onclick="if(event.target===this)closeImportModal()">
+  <div class="import-modal">
+    <div class="import-head">
+      <h2>📥 Importar RAs desde CATEDU</h2>
+      <button class="import-close" onclick="closeImportModal()">✕</button>
+    </div>
+    <div class="import-body">
+      <!-- Breadcrumb / pasos -->
+      <div class="import-steps">
+        <div class="import-step active" id="stepBadge1">1. Familia</div>
+        <div class="import-step-arrow">›</div>
+        <div class="import-step" id="stepBadge2">2. Ciclo</div>
+        <div class="import-step-arrow">›</div>
+        <div class="import-step" id="stepBadge3">3. Módulo</div>
+        <div class="import-step-arrow">›</div>
+        <div class="import-step" id="stepBadge4">4. Importar</div>
+      </div>
+
+      <!-- PASO 1: Familia profesional -->
+      <div id="importStep1" class="import-step-panel">
+        <div class="import-step-title">Selecciona la familia profesional</div>
+        <div class="import-step-status" id="statusFamilias"></div>
+        <div class="import-grid" id="familiasList"></div>
+      </div>
+
+      <!-- PASO 2: Ciclo formativo -->
+      <div id="importStep2" class="import-step-panel" style="display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <button class="btn ghost small" onclick="importGoBack(1)">← Volver</button>
+          <div class="import-step-title" style="margin:0">Selecciona el ciclo formativo</div>
+        </div>
+        <div class="import-step-status" id="statusCiclos"></div>
+        <div class="import-list-catedu" id="ciclosList"></div>
+      </div>
+
+      <!-- PASO 3: Módulo -->
+      <div id="importStep3" class="import-step-panel" style="display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <button class="btn ghost small" onclick="importGoBack(2)">← Volver</button>
+          <div class="import-step-title" style="margin:0">Selecciona el módulo</div>
+        </div>
+        <div class="import-step-status" id="statusModulos"></div>
+        <div class="import-list-catedu" id="modulosList_catedu"></div>
+      </div>
+
+      <!-- PASO 4: Importar RAs -->
+      <div id="importStep4" class="import-step-panel" style="display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <button class="btn ghost small" onclick="importGoBack(3)">← Volver</button>
+          <div class="import-step-title" style="margin:0">Importar RAs y CEs</div>
+        </div>
+        <div class="import-mod-card visible" id="importModCard">
+          <div class="import-mod-title" id="importModTitle"></div>
+          <div class="import-mod-meta" id="importModMeta"></div>
+        </div>
+        <div style="margin-top:14px">
+          <button class="btn import-btn small" onclick="doImportRas()" id="loadRasBtn">⬇ Cargar RAs desde CATEDU</button>
+          <div class="import-ra-status" id="importRaStatus"></div>
+        </div>
+      </div>
+    </div>
+    <div class="import-foot">
+      <button class="btn ghost" onclick="closeImportModal()">Cancelar</button>
+      <button class="btn primary" id="importApplyBtn" onclick="applyImport()" disabled>✔ Aplicar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ========= MODALS ========= -->
 <div id="modal-overlay" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal()">
@@ -1163,111 +1240,336 @@ byId('addRa').onclick = () => {
 byId('ceDesc').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); byId('addCeTemp').click(); }});
 byId('raContenido').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); byId('addRa').click(); }});
 
-// === IMPORT FROM CATEDU ===
-function setStatus(html, cls='') {
-  const el = byId('importStatus'); el.className = cls?'status-'+cls:''; el.innerHTML = html;
+// === IMPORT FROM CATEDU (Wizard: Familia > Ciclo > Modulo > RAs) ===
+
+const CATEDU_BASE = 'https://centrosdocentes.catedu.es/awc/public/pages/familias';
+
+let importSelectedMod = null;
+let importRaList = [];
+let importCurrentStep = 1;
+let importSelectedCicloNombre = '';
+const importCache = {};
+
+const PROXIES_LIST = [
+  u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  u => `https://thingproxy.freeboard.io/fetch/${u}`
+];
+
+async function fetchViaProxyImport(url, timeoutMs = 10000) {
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+    const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (r.ok) { const text = await r.text(); if (text?.trim().length > 200) return text; }
+  } catch(_) {}
+  for (const makeUrl of PROXIES_LIST) {
+    try {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+      const r = await fetch(makeUrl(url), { signal: ctrl.signal });
+      clearTimeout(tid);
+      if (!r.ok) continue;
+      const text = await r.text();
+      try { const j = JSON.parse(text); if (j?.contents?.length > 200) return j.contents; } catch(_) {}
+      if (text?.trim().length > 200) return text;
+    } catch(_) { continue; }
+  }
+  return null;
 }
 
-function parseRAsFromDoc(doc) {
+function openCateduImport() {
+  importSelectedMod = null; importRaList = []; importSelectedCicloNombre = '';
+  byId('importApplyBtn').disabled = true;
+  setImportRaStatus('', '');
+  byId('importCateduModal').classList.remove('hidden');
+  importGoToStep(1);
+}
+
+function closeImportModal() { byId('importCateduModal').classList.add('hidden'); }
+
+function importGoToStep(n) {
+  importCurrentStep = n;
+  for (let i = 1; i <= 4; i++) {
+    const panel = byId(`importStep${i}`);
+    const badge = byId(`stepBadge${i}`);
+    panel.style.display = i === n ? '' : 'none';
+    badge.className = 'import-step' + (i === n ? ' active' : i < n ? ' done' : '');
+  }
+  if (n === 1) loadFamilias();
+}
+
+function importGoBack(toStep) { importGoToStep(toStep); }
+
+// ---- PASO 1: Familias ----
+
+async function loadFamilias() {
+  const el = byId('familiasList'), st = byId('statusFamilias');
+  if (importCache.familias) { renderFamilias(importCache.familias); return; }
+  el.innerHTML = '';
+  st.innerHTML = '<div class="spinner-sm"></div> Cargando familias...';
+  const html = await fetchViaProxyImport(`${CATEDU_BASE}/index.php`);
+  if (!html) { st.textContent = 'No se pudieron cargar las familias. Comprueba la conexion.'; return; }
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const familias = [];
+  doc.querySelectorAll('a[href*="ciclos.php?familia="]').forEach(a => {
+    const m = a.href.match(/familia=([A-Z0-9]+)/);
+    if (!m) return;
+    const cod = m[1];
+    if (familias.find(f => f.cod === cod)) return;
+    const card = a.closest('.card, .familia-card, .col, li, td') || a;
+    const nombre = card.querySelector('h5,h4,h3,.card-title,.familia-nombre,strong')?.textContent?.trim()
+      || a.textContent.trim() || cod;
+    familias.push({ cod, nombre: nombre.replace(/\s+/g,' ') });
+  });
+  if (!familias.length) { st.textContent = 'No se detectaron familias. La estructura de CATEDU puede haber cambiado.'; return; }
+  importCache.familias = familias;
+  renderFamilias(familias);
+}
+
+function renderFamilias(familias) {
+  byId('statusFamilias').textContent = `${familias.length} familias disponibles`;
+  byId('familiasList').innerHTML = familias.map(f =>
+    `<div class="import-grid-item" onclick="selectFamilia('${esc(f.cod)}','${f.nombre.replace(/'/g,"&#39;")}')">` +
+    `<div class="ig-code">${esc(f.cod)}</div>` +
+    `<div class="ig-name">${esc(f.nombre)}</div></div>`
+  ).join('');
+}
+
+// ---- PASO 2: Ciclos ----
+
+async function selectFamilia(cod, nombre) {
+  importGoToStep(2);
+  const el = byId('ciclosList'), st = byId('statusCiclos');
+  el.innerHTML = '';
+  st.innerHTML = `<div class="spinner-sm"></div> Cargando ciclos...`;
+  const cacheKey = `ciclos_${cod}`;
+  if (importCache[cacheKey]) { renderCiclos(importCache[cacheKey]); return; }
+  const html = await fetchViaProxyImport(`${CATEDU_BASE}/ciclos.php?familia=${encodeURIComponent(cod)}`);
+  if (!html) { st.textContent = 'No se pudieron cargar los ciclos.'; return; }
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const ciclos = [];
+  doc.querySelectorAll('a[href*="info_ciclo.php?codciclo="]').forEach(a => {
+    const m = (a.href || a.getAttribute('href') || '').match(/codciclo=([A-Z0-9]+)/);
+    if (!m) return;
+    const codCiclo = m[1];
+    if (ciclos.find(c => c.cod === codCiclo)) return;
+    const card = a.closest('.card, .ciclo-card, .col, li, tr, td') || a;
+    const nombre = card.querySelector('h5,h4,h3,.card-title,strong')?.textContent?.trim() || a.textContent.trim() || codCiclo;
+    const grado = card.querySelector('.badge, .grado, small')?.textContent?.trim() || '';
+    ciclos.push({ cod: codCiclo, nombre: nombre.replace(/\s+/g,' '), grado });
+  });
+  if (!ciclos.length) { st.textContent = 'No se detectaron ciclos. La estructura de CATEDU puede haber cambiado.'; return; }
+  importCache[cacheKey] = ciclos;
+  renderCiclos(ciclos);
+}
+
+function renderCiclos(ciclos) {
+  byId('statusCiclos').textContent = `${ciclos.length} ciclos disponibles`;
+  byId('ciclosList').innerHTML = ciclos.map(c =>
+    `<div class="import-list-item" onclick="selectCiclo('${esc(c.cod)}','${c.nombre.replace(/'/g,"&#39;")}')">` +
+    `<span class="il-code">${esc(c.cod)}</span>` +
+    `<span class="il-name">${esc(c.nombre)}</span>` +
+    (c.grado ? `<span class="il-meta">${esc(c.grado)}</span>` : '') +
+    `</div>`
+  ).join('');
+}
+
+// ---- PASO 3: Modulos ----
+
+async function selectCiclo(cod, nombre) {
+  importGoToStep(3);
+  importSelectedCicloNombre = `${nombre} (${cod})`;
+  const el = byId('modulosList_catedu'), st = byId('statusModulos');
+  el.innerHTML = '';
+  st.innerHTML = `<div class="spinner-sm"></div> Cargando modulos...`;
+  const cacheKey = `modulos_${cod}`;
+  if (importCache[cacheKey]) { renderModulosCatedu(importCache[cacheKey]); return; }
+  const html = await fetchViaProxyImport(`${CATEDU_BASE}/info_ciclo.php?codciclo=${encodeURIComponent(cod)}`);
+  if (!html) { st.textContent = 'No se pudieron cargar los modulos.'; return; }
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const modulos = [];
+  doc.querySelectorAll('a[href*="modulo.php"]').forEach(a => {
+    const href = a.getAttribute('href') || '';
+    const mCod = href.match(/[?&]cod=([A-Z0-9]+)/i);
+    const mCiclo = href.match(/[?&]ciclo=([A-Z0-9]+)/);
+    if (!mCod) return;
+    const codMod = mCod[1], cicloCode = mCiclo ? mCiclo[1] : cod;
+    if (modulos.find(m => m.cod === codMod)) return;
+    let nombreMod = '', horasSem = null, horasTotales = null;
+    const tr = a.closest('tr');
+    if (tr) {
+      const tds = tr.querySelectorAll('td');
+      if (tds.length >= 2) {
+        const nums = [];
+        tds.forEach(td => {
+          const txt = td.textContent.trim().replace(/\s+/g,' ');
+          if (/^[A-Z]?\d{3,4}$/i.test(txt)) return;
+          const soloNum = txt.match(/^(\d+)\s*h?$/i);
+          if (soloNum) { nums.push(parseInt(soloNum[1])); return; }
+          if (txt.length > 4 && !nombreMod) nombreMod = txt;
+        });
+        if (nums.length >= 2) { horasSem = Math.min(...nums); horasTotales = Math.max(...nums); }
+        else if (nums.length === 1) { if (nums[0] <= 30) horasSem = nums[0]; else horasTotales = nums[0]; }
+        if (!horasTotales) {
+          tds.forEach(td => { const n = parseInt(td.textContent.trim()); if (n > 10 && n <= 1500 && (!horasTotales || n > horasTotales)) horasTotales = n; });
+        }
+      }
+    }
+    if (!nombreMod) {
+      const linkText = a.textContent.trim().replace(/\s+/g,' ');
+      nombreMod = linkText.replace(/^[A-Z]?\d{3,4}[\s.\-]+/i, '').trim() || linkText;
+    }
+    if (!nombreMod || nombreMod === codMod) {
+      const parent = a.parentElement;
+      if (parent) {
+        const clone = parent.cloneNode(true);
+        clone.querySelectorAll('a').forEach(x => x.remove());
+        const resto = clone.textContent.trim().replace(/\s+/g,' ');
+        if (resto.length > 4) nombreMod = resto;
+      }
+    }
+    nombreMod = nombreMod || `Modulo ${codMod}`;
+    const urlRa = `https://centrosdocentes.catedu.es/awc/modulo.php?cod=${codMod}&ciclo=${cicloCode}&from_ciclo=true`;
+    modulos.push({ cod: codMod, nombre: nombreMod.trim(), horasSem, horas: horasTotales, urlRa, ciclo: cicloCode });
+  });
+  if (!modulos.length) { st.textContent = 'No se detectaron modulos. La estructura de CATEDU puede haber cambiado.'; return; }
+  modulos.sort((a, b) => { const na = parseInt(a.cod)||0, nb = parseInt(b.cod)||0; if (na && nb) return na-nb; return a.cod.localeCompare(b.cod); });
+  importCache[cacheKey] = modulos;
+  renderModulosCatedu(modulos);
+}
+
+function renderModulosCatedu(modulos) {
+  byId('statusModulos').textContent = `${modulos.length} modulos disponibles`;
+  byId('modulosList_catedu').innerHTML = modulos.map(m =>
+    `<div class="import-list-item" onclick='selectModuloCatedu(${JSON.stringify(m)})'>` +
+    `<span class="il-code">${esc(m.cod)}</span>` +
+    `<span class="il-name">${esc(m.nombre)}</span>` +
+    (m.horasSem ? `<span class="il-meta">${m.horasSem}h/sem</span>` : '') +
+    (m.horas    ? `<span class="il-meta">${m.horas}h tot.</span>` : '') +
+    `</div>`
+  ).join('');
+}
+
+// ---- PASO 4: Importar RAs ----
+
+function selectModuloCatedu(mod) {
+  importSelectedMod = mod; importRaList = [];
+  setImportRaStatus('', '');
+  byId('importModTitle').textContent = `${mod.cod}. ${mod.nombre}`;
+  const horasLabel = [mod.horasSem ? `${mod.horasSem}h/sem` : '', mod.horas ? `${mod.horas}h totales` : ''].filter(Boolean).join(' - ');
+  byId('importModMeta').textContent = [horasLabel, importSelectedCicloNombre || mod.ciclo].filter(Boolean).join(' - ');
+  byId('importApplyBtn').disabled = true;
+  importGoToStep(4);
+}
+
+function setImportRaStatus(msg, cls) {
+  const el = byId('importRaStatus');
+  el.textContent = msg;
+  el.className = 'import-ra-status' + (msg ? ' show ' + cls : '');
+}
+
+function parseRAsFromDocImport(doc) {
   const result = [];
-  const raCards = doc.querySelectorAll('.ra-card');
-  if (raCards.length) {
-    raCards.forEach(card => {
-      const numEl = card.querySelector('.text-muted');
-      const numRaw = numEl ? numEl.textContent.trim() : '';
-      const numMatch = numRaw.match(/\(?(RA\s*\d+)\)?/i);
-      const num = numMatch ? numMatch[1].replace(/\s+/g,'').toUpperCase() : 'RA?';
-      const strongEl = card.querySelector('strong');
-      let contenido = '';
-      if (strongEl) { const cl=strongEl.cloneNode(true); cl.querySelectorAll('.text-muted').forEach(e=>e.remove()); contenido=cl.textContent.trim().replace(/\s+/g,' '); }
-      if (!contenido) { const pEl=card.querySelector('p'); if (pEl) { const cl=pEl.cloneNode(true); cl.querySelectorAll('.text-muted').forEach(e=>e.remove()); contenido=cl.textContent.trim().replace(/\s+/g,' '); }}
-      const ces = [];
-      card.querySelectorAll('li.ce-item').forEach(li => {
-        const letterEl=li.querySelector('.ce-letter'); const letra=letterEl?letterEl.textContent.trim():'';
-        const cl=li.cloneNode(true); cl.querySelectorAll('.ce-letter').forEach(e=>e.remove());
-        const desc=cl.textContent.trim().replace(/\s+/g,' ');
-        if (desc.length>3) ces.push({num:letra||'–',desc});
-      });
-      if (contenido) result.push({num,contenido,ces});
+  doc.querySelectorAll('.ra-card').forEach(card => {
+    const numEl = card.querySelector('.text-muted');
+    const numMatch = (numEl?.textContent.trim()||'').match(/\(?(RA\s*\d+)\)?/i);
+    const num = numMatch ? numMatch[1].replace(/\s+/g,'').toUpperCase() : null;
+    if (!num) return;
+    let contenido = '';
+    const strongEl = card.querySelector('strong');
+    if (strongEl) { const cl = strongEl.cloneNode(true); cl.querySelectorAll('.text-muted').forEach(e => e.remove()); contenido = cl.textContent.trim().replace(/\s+/g,' '); }
+    if (!contenido) {
+      const pEl = card.querySelector('p, .ra-titulo, h5, h4');
+      if (pEl) { const cl = pEl.cloneNode(true); cl.querySelectorAll('.text-muted, small').forEach(e => e.remove()); contenido = cl.textContent.trim().replace(/\s+/g,' '); }
+    }
+    if (!contenido) return;
+    const ces = [];
+    card.querySelectorAll('li.ce-item, li').forEach(li => {
+      const letraEl = li.querySelector('.ce-letter, .badge, b, strong');
+      let letra = letraEl?.textContent.trim().replace(/[^a-z)]/gi,'') || '';
+      if (!/[a-z]\)/i.test(letra)) { const m = li.textContent.trim().match(/^([a-z]\))\s/i); letra = m ? m[1] : letra; }
+      const cl = li.cloneNode(true);
+      cl.querySelectorAll('.ce-letter, .badge').forEach(e => e.remove());
+      let desc = cl.textContent.trim().replace(/\s+/g,' ').replace(/^[a-z]\)\s*/i, '').trim();
+      if (desc.length > 3) ces.push({ num: letra || '-', desc });
     });
-    if (result.length) return result;
-  }
-  const BL = new Set(['DIV','P','LI','TR','TD','TH','H1','H2','H3','H4','H5','H6','BR','SECTION','ARTICLE','DT','DD','BLOCKQUOTE']);
-  let raw = '';
-  function walk(node) {
-    if (node.nodeType===3) raw+=node.textContent;
-    else if (node.nodeType===1) {
-      if (['SCRIPT','STYLE','NAV','FOOTER'].includes(node.tagName)) return;
-      if (BL.has(node.tagName)) raw+='\n'; node.childNodes.forEach(walk); if (BL.has(node.tagName)) raw+='\n';
+    result.push({ num, contenido, ces });
+  });
+  if (result.length) return result;
+  const raHeadings = doc.querySelectorAll('[class*="ra"], [id*="ra"], h3, h4, h5, .card-header, .panel-heading');
+  raHeadings.forEach(el => {
+    const txt = el.textContent.trim();
+    const m = txt.match(/\b(RA\s*\d+)\b/i);
+    if (!m) return;
+    const num = m[1].replace(/\s+/g,'').toUpperCase();
+    if (result.find(r => r.num === num)) return;
+    let contenido = txt.replace(m[0],'').replace(/^[\s.\-:]+/,'').trim();
+    const container = el.closest('.card, .panel, section, .ra-block') || el.parentElement;
+    const ces = [];
+    if (container) {
+      container.querySelectorAll('li, .ce-item').forEach(li => {
+        const liTxt = li.textContent.trim().replace(/\s+/g,' ');
+        const cm = liTxt.match(/^([a-z]\))\s*(.+)/i);
+        if (cm) ces.push({ num: cm[1], desc: cm[2] });
+      });
     }
-  }
-  walk(doc.body||doc.documentElement);
-  const lines=raw.split(/\r?\n/).map(l=>l.trim().replace(/\s+/g,' ')).filter(l=>l.length>0);
-  const seen=new Set(); let cur=null;
-  const reRA=/^(RA\s*\d+)\s*[:\.\-\)\u2013]?\s*(.*)/i;
-  const reCE=/^(CE\s*\d+[\.\-]\d+)\s*[:\.\-\)\u2013]?\s*(.*)/i;
-  const reCEn=/^(\d+[\.\-]\d+[\.\-]?\d*)\s*[:\.\-\)\u2013]\s+(.+)/i;
-  const reLet=/^([a-zA-Z]\s*[\.\)\-\u2013])\s+(.{8,})/;
-  for (let i=0;i<lines.length;i++) {
-    const line=lines[i];
-    const raM=line.match(reRA);
-    if (raM) {
-      const num=raM[1].replace(/\s/g,'').toUpperCase();
-      if (seen.has(num)) continue; seen.add(num);
-      let contenido=(raM[2]||'').trim();
-      if (!contenido&&i+1<lines.length&&!lines[i+1].match(reRA)&&!lines[i+1].match(reCE)) {contenido=lines[i+1];i++;}
-      cur={num,contenido:contenido||line,ces:[]}; result.push(cur); continue;
-    }
-    if (!cur) continue;
-    const ceM=line.match(reCE)||line.match(reCEn)||line.match(reLet);
-    if (ceM) {const n2=ceM[1].trim(),d2=(ceM[2]||'').trim();if(d2.length>3&&!cur.ces.find(c=>c.num===n2))cur.ces.push({num:n2,desc:d2});}
-  }
+    if (contenido.length > 3) result.push({ num, contenido, ces });
+  });
   return result;
 }
 
-async function fetchHTML(url) {
-  try { const r=await fetch(url,{mode:'cors',credentials:'omit'}); if(r.ok) return {html:await r.text(),via:'directo'}; } catch {}
-  try { const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url),{cache:'no-store'}); if(r.ok){const j=await r.json();if(j.contents)return{html:j.contents,via:'allorigins'};}} catch {}
-  try { const r=await fetch('https://corsproxy.io/?'+encodeURIComponent(url)); if(r.ok) return {html:await r.text(),via:'corsproxy.io'}; } catch {}
-  throw new Error('No se pudo acceder a la URL. Comprueba tu conexión.');
+function parseRAsFromTextImport(rawText) {
+  const text = rawText.replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\t/g,' ').replace(/\r/g,'\n').replace(/[ ]{2,}/g,' ');
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const result = []; let currentRA = null;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const raMatch = line.match(/^(?:RA\s*(\d+)|Resultado(?:s)?\s+de\s+aprendizaje\s+(\d+))[\s.:_-]*(.*)$/i);
+    if (raMatch) {
+      if (currentRA) result.push(currentRA);
+      const raNum = raMatch[1] || raMatch[2];
+      let contenido = (raMatch[3] || '').trim();
+      if (!contenido && i + 1 < lines.length) { const next = lines[i+1]; if (!next.match(/^RA\s*\d+/i) && !next.match(/^[a-z]\)/i)) { contenido = next; i++; } }
+      currentRA = { num: `RA${raNum}`, contenido, ces: [] }; continue;
+    }
+    if (currentRA) {
+      const ceM = line.match(/^(?:CE\d+\.)?([a-z])[).\-]\s*(.+)$/i);
+      if (ceM) { const letra = ceM[1].toLowerCase()+')'; if (ceM[2].trim().length>3) currentRA.ces.push({num:letra,desc:ceM[2].trim()}); continue; }
+      const ceM2 = line.match(/^\d+\.([a-z])[)]\s*(.+)$/i);
+      if (ceM2) { const letra = ceM2[1].toLowerCase()+')'; if (ceM2[2].trim().length>3) currentRA.ces.push({num:letra,desc:ceM2[2].trim()}); continue; }
+    }
+  }
+  if (currentRA) result.push(currentRA);
+  return result;
 }
 
-byId('importarUrl').onclick = async () => {
-  const url = byId('importUrl').value.trim();
-  if (!url) return alert('Pega primero la URL del módulo');
-  if (!url.startsWith('http')) return alert('La URL debe empezar por http:// o https://');
-  const btn = byId('importarUrl'); btn.disabled = true;
-  byId('importPreview').style.display = 'none';
-  setStatus('<span class="spinner"></span><span class="status-loading">Conectando con CATEDU…</span>');
+async function doImportRas() {
+  if (!importSelectedMod?.urlRa) { setImportRaStatus('No hay URL del modulo disponible.', 'err'); return; }
+  const btn = byId('loadRasBtn'); btn.disabled = true;
+  setImportRaStatus('Consultando CATEDU...', 'loading');
+  const html = await fetchViaProxyImport(importSelectedMod.urlRa, 15000);
+  if (!html) { setImportRaStatus('No se pudo conectar con CATEDU. Comprueba la conexion.', 'err'); btn.disabled=false; return; }
   try {
-    const {html,via} = await fetchHTML(url);
-    if (!html) throw new Error('La página devolvió contenido vacío.');
-    setStatus('<span class="spinner"></span><span class="status-loading">Analizando RAs y CEs…</span>');
-    const doc = (new DOMParser()).parseFromString(html,'text/html');
-    const found = parseRAsFromDoc(doc);
-    if (!found.length) {
-      const snippet=(doc.body?doc.body.textContent:'').replace(/\s{3,}/g,' ').trim().slice(0,2000);
-      setStatus(`<span class="status-err">⚠ No se encontraron RAs (via ${esc(via)}). La página puede requerir login.</span>`);
-      btn.disabled=false; return;
-    }
-    pendingImport = found;
-    const prev = byId('importPreviewList'); prev.innerHTML='';
-    found.forEach(ra => { const c=document.createElement('div');c.className='ra-card preview';c.innerHTML=raCardHTML(ra,false,-1);prev.appendChild(c); });
-    byId('importPreview').style.display='block';
-    setStatus(`✅ ${found.length} RA(s) encontrado(s) (via ${esc(via)}). Revisa y confirma abajo.`,'ok');
-    refreshAccordion();
-  } catch(err) { setStatus('❌ '+esc(err.message),'err'); }
-  btn.disabled=false;
-};
-byId('confirmarImport').onclick = () => {
-  if (!pendingImport.length) return;
-  pendingImport.forEach(ra => RAs.push(ra)); pendingImport=[];
-  byId('importPreview').style.display='none'; byId('importUrl').value='';
-  setStatus('✅ RAs añadidos al cuaderno.','ok');
-  renderRAs(); scheduleAutoSave();
-  setTimeout(()=>{byId('importStatus').innerHTML=''},4000);
-};
-byId('cancelarImport').onclick = () => { pendingImport=[]; byId('importPreview').style.display='none'; setStatus(''); refreshAccordion(); };
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    let raList = parseRAsFromDocImport(doc);
+    if (!raList.length) raList = parseRAsFromTextImport(html);
+    if (!raList.length) raList = parseRAsFromTextImport(doc.body?.innerText || doc.body?.textContent || '');
+    if (!raList.length) { setImportRaStatus('No se detectaron RAs. La estructura de CATEDU puede haber cambiado.', 'err'); btn.disabled=false; return; }
+    const totalCEs = raList.reduce((acc, ra) => acc + (ra.ces?.length || 0), 0);
+    importRaList = raList;
+    setImportRaStatus(`OK: ${raList.length} RAs${totalCEs ? ` y ${totalCEs} CEs` : ''} importados. Pulsa "Aplicar" para guardarlos.`, 'ok');
+    byId('importApplyBtn').disabled = false;
+  } catch(e) { setImportRaStatus(`Error al procesar la respuesta: ${e.message}`, 'err'); }
+  btn.disabled = false;
+}
+
+function applyImport() {
+  if (!importRaList.length) { setImportRaStatus('Carga primero los RAs pulsando "Cargar RAs desde CATEDU"', 'err'); return; }
+  importRaList.forEach(ra => RAs.push(ra));
+  renderRAs(); scheduleAutoSave(); closeImportModal();
+}
 
 // === GENERATE CALENDAR ===
 function generateRows(dIni, dFin) {
