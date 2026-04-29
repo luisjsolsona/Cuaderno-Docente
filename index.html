@@ -974,7 +974,7 @@ let saveTimer = null;
 const festivos = new Map(), feoes = new Map(), evaluaciones = new Map();
 const modulos = [], RAs = [];
 let planMap = new Map(), lastAsignaciones = [], ceTempList = [], pendingImport = [];
-let planSesiones = [], planSesCounts = [];
+let planSesiones = [], planSesCounts = [], planLocked = [];
 let calendarRows = [];
 
 function resetDocenteState() {
@@ -1741,11 +1741,10 @@ function _renderPlanCards(asignaciones) {
   const totalSes = planSesiones.length;
   const planContent = byId('planContent');
 
-  // Rebuild bar + cards (keep stats resumen at top untouched)
   const existing = planContent.querySelectorAll('.plan-adjustable');
   existing.forEach(e => e.remove());
 
-  // Bar wrapper
+  // Bar
   const tw = document.createElement('div');
   tw.className = 'plan-adjustable'; tw.style.marginBottom = '16px';
   let barHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">Distribución proporcional — <span id="planTotalBadge"></span></div><div class="plan-bar">';
@@ -1757,7 +1756,8 @@ function _renderPlanCards(asignaciones) {
   barHTML += '</div><div class="plan-legend">';
   asignaciones.forEach(({ ra, raIdx, sesiones: ses, horas }) => {
     const col = RA_COLORS[raIdx % 8];
-    barHTML += `<span class="plan-legend-item" style="background:${col.bg};border:1px solid ${col.border};color:${col.text}"><strong>${esc(ra.num)}</strong> ${ses.length} ses · ${horas.toFixed(1)}h</span>`;
+    const lk = planLocked[raIdx] ? ' 🔒' : '';
+    barHTML += `<span class="plan-legend-item" style="background:${col.bg};border:1px solid ${col.border};color:${col.text}"><strong>${esc(ra.num)}</strong> ${ses.length} ses · ${horas.toFixed(1)}h${lk}</span>`;
   });
   barHTML += '</div>';
   tw.innerHTML = barHTML;
@@ -1768,19 +1768,28 @@ function _renderPlanCards(asignaciones) {
 
   asignaciones.forEach(({ ra, raIdx, sesiones: ses, horas }) => {
     const col = RA_COLORS[raIdx % 8];
+    const locked = !!planLocked[raIdx];
     const card = document.createElement('div');
     card.className = 'plan-adjustable';
-    card.style.cssText = `background:${col.bg};border:1px solid ${col.border};border-radius:12px;padding:14px;margin-bottom:10px`;
+    card.style.cssText = `background:${col.bg};border:${locked ? `2px solid ${col.badge}` : `1px solid ${col.border}`};border-radius:12px;padding:14px;margin-bottom:10px;transition:border .15s`;
+
     let ceHTML = '';
     if (ra.ces.length) {
       ceHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">';
       ra.ces.forEach(ce => { ceHTML += `<span style="background:#fff;border:1px solid ${col.border};border-radius:5px;padding:2px 7px;font-size:11px;color:${col.text}"><strong>${esc(ce.num)}</strong> ${esc(ce.desc.length > 50 ? ce.desc.slice(0, 50) + '…' : ce.desc)}</span>`; });
       ceHTML += '</div>';
     }
+
     const sesId = 'ses_' + raIdx;
     const sesRows = ses.map(s => `<tr><td style="padding:4px 8px;color:var(--muted)">${s.fecha}</td><td style="padding:4px 8px;color:var(--muted)">${s.dia}</td><td style="padding:4px 8px;font-size:12px">${esc(s.modulo)}</td><td style="padding:4px 8px;color:var(--muted)">${s.inicio}–${s.fin}</td><td style="padding:4px 8px;font-weight:600;color:${col.text}">${s.horas}h</td></tr>`).join('');
-    const btnStyle = `background:#fff8;border:1px solid ${col.border};color:${col.text};border-radius:7px;padding:3px 8px;font-size:12px;font-weight:700;cursor:pointer;line-height:1`;
+
+    const adjBtnStyle = locked
+      ? `background:#fff4;border:1px solid ${col.border};color:${col.text};border-radius:7px;padding:3px 8px;font-size:12px;font-weight:700;cursor:not-allowed;opacity:0.35;line-height:1`
+      : `background:#fff8;border:1px solid ${col.border};color:${col.text};border-radius:7px;padding:3px 8px;font-size:12px;font-weight:700;cursor:pointer;line-height:1`;
+    const lockBtnStyle = `background:${locked ? col.badge : '#fff8'};color:${locked ? '#fff' : col.text};border:1px solid ${col.border};border-radius:7px;padding:3px 9px;font-size:13px;cursor:pointer;line-height:1;transition:all .15s`;
     const dateRange = ses.length ? `${ses[0].fecha} → ${ses[ses.length - 1].fecha}` : '—';
+    const disAttr = locked ? 'disabled' : '';
+
     card.innerHTML = `
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
@@ -1791,11 +1800,12 @@ function _renderPlanCards(asignaciones) {
           <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:${col.text};align-items:center">
             <span style="display:flex;align-items:center;gap:4px">
               📅
-              <button onclick="adjustPlanSessions(${raIdx},-1)" style="${btnStyle}" title="Quitar sesión">−</button>
+              <button onclick="adjustPlanSessions(${raIdx},-1)" ${disAttr} style="${adjBtnStyle}" title="Quitar sesión">−</button>
               <strong style="min-width:22px;text-align:center">${ses.length}</strong>
-              <button onclick="adjustPlanSessions(${raIdx},1)" style="${btnStyle}" title="Añadir sesión">+</button>
+              <button onclick="adjustPlanSessions(${raIdx},1)" ${disAttr} style="${adjBtnStyle}" title="Añadir sesión">+</button>
               sesiones
             </span>
+            <button onclick="togglePlanLock(${raIdx})" style="${lockBtnStyle}" title="${locked ? 'Desbloquear' : 'Bloquear este valor'}">${locked ? '🔒 Bloqueado' : '🔓 Bloquear'}</button>
             <span>⏱ <strong>${horas.toFixed(1)}h</strong></span>
             <span>🗓 ${dateRange}</span>
           </div>${ceHTML}
@@ -1813,27 +1823,32 @@ function _renderPlanCards(asignaciones) {
   const nota = document.createElement('p');
   nota.className = 'plan-adjustable';
   nota.style.cssText = 'font-size:12px;color:var(--muted);margin-top:4px;font-style:italic';
-  nota.textContent = 'Usa los botones + / − para ajustar sesiones por RA manteniendo el total. Genera el calendario para ver la columna «RA Planificado».';
+  nota.textContent = 'Usa + / − para ajustar. Bloquea un RA para fijarlo; los demás absorben los cambios. Genera el calendario para ver «RA Planificado».';
   planContent.appendChild(nota);
 
   const badge = byId('planTotalBadge');
   if (badge) badge.textContent = `${totalSes} sesiones totales`;
 }
 
+function togglePlanLock(raIdx) {
+  planLocked[raIdx] = !planLocked[raIdx];
+  _renderPlanCards(_buildAsignaciones(planSesCounts));
+}
+
 function adjustPlanSessions(raIdx, delta) {
-  const total = planSesiones.length;
+  if (planLocked[raIdx]) return;
   if (delta > 0) {
-    // Find the RA with the most sessions to steal from
+    // Steal from the unlocked RA with most sessions
     let maxIdx = -1, maxVal = 0;
-    planSesCounts.forEach((c, i) => { if (i !== raIdx && c > maxVal) { maxIdx = i; maxVal = c; } });
+    planSesCounts.forEach((c, i) => { if (i !== raIdx && !planLocked[i] && c > maxVal) { maxIdx = i; maxVal = c; } });
     if (maxIdx === -1 || maxVal <= 0) return;
     planSesCounts[raIdx]++;
     planSesCounts[maxIdx]--;
   } else {
     if (planSesCounts[raIdx] <= 0) return;
-    // Give to the RA with fewest sessions
+    // Give to the unlocked RA with fewest sessions
     let minIdx = -1, minVal = Infinity;
-    planSesCounts.forEach((c, i) => { if (i !== raIdx && c < minVal) { minIdx = i; minVal = c; } });
+    planSesCounts.forEach((c, i) => { if (i !== raIdx && !planLocked[i] && c < minVal) { minIdx = i; minVal = c; } });
     if (minIdx === -1) return;
     planSesCounts[raIdx]--;
     planSesCounts[minIdx]++;
@@ -1855,6 +1870,7 @@ byId('planificar').onclick = () => {
   if (dF < dI) return alert('Fecha fin debe ser >= inicio');
 
   planSesiones = [];
+  planLocked = RAs.map(() => false);
   const oneDay = 86400000;
   for (let t = dI.getTime(); t <= dF.getTime(); t += oneDay) {
     const d = new Date(t), iso = isoDate(d);
