@@ -368,7 +368,7 @@
       </div>
 
       <div class="card">
-        <p class="note">Rellena los pasos 1–6 y pulsa <strong>⚡ Generar calendario</strong>. El resultado se muestra y guarda aquí mismo. Puedes exportar a <span class="kbd">.xlsx</span> o <span class="kbd">.csv</span>.</p>
+        <p class="note">Rellena los pasos 1–6 y pulsa <strong>⚡ Generar calendario</strong>. El resultado se muestra y guarda aquí mismo.</p>
         <div class="hr"></div>
 
         <div class="grid cols-2">
@@ -974,6 +974,7 @@ let saveTimer = null;
 const festivos = new Map(), feoes = new Map(), evaluaciones = new Map();
 const modulos = [], RAs = [];
 let planMap = new Map(), lastAsignaciones = [], ceTempList = [], pendingImport = [];
+let planSesiones = [], planSesCounts = [];
 let calendarRows = [];
 
 function resetDocenteState() {
@@ -1726,95 +1727,77 @@ byId('exportarPlan').onclick = () => {
   dlBlob(new Blob([text], {type:'text/plain;charset=utf-8'}), 'Planificacion_RAs.txt');
 };
 
-byId('planificar').onclick = () => {
-  const ini=byId('inicio').value, fin=byId('fin').value;
-  if (!ini||!fin) return alert('Primero indica las fechas del curso (paso 1)');
-  if (!modulos.length) return alert('Añade al menos un módulo (paso 5)');
-  if (!RAs.length) return alert('Añade al menos un RA (apartado 6)');
-  const dI=new Date(ini+'T00:00:00'), dF=new Date(fin+'T00:00:00');
-  if (dF<dI) return alert('Fecha fin debe ser >= inicio');
-
-  const oneDay=86400000, sesiones=[];
-  for (let t=dI.getTime(); t<=dF.getTime(); t+=oneDay) {
-    const d=new Date(t), iso=isoDate(d);
-    const isF=festivos.has(iso), isFe=feoes.has(iso), ev=evaluaciones.get(iso), isEB=!!(ev&&ev.bloquea);
-    if (isF||isFe||isEB) continue;
-    modulos.forEach(m => {
-      if (m.dow===d.getDay()) sesiones.push({iso,fecha:fmtDate(d),dia:DIAS[d.getDay()],horas:+horasEntre(m.inicio,m.fin).toFixed(2),modulo:m.nombre,inicio:m.inicio,fin:m.fin});
-    });
-  }
-  if (!sesiones.length) return alert('No hay sesiones disponibles en ese rango.');
-
-  const totalHoras=sesiones.reduce((a,s)=>a+s.horas,0), totalSes=sesiones.length, nRAs=RAs.length;
-  const pesos=RAs.map(ra=>Math.max(1,ra.ces.length)), totalPeso=pesos.reduce((a,p)=>a+p,0);
-  const sesPorRA=pesos.map(p=>Math.round(totalSes*p/totalPeso));
-  const diff=totalSes-sesPorRA.reduce((a,v)=>a+v,0);
-  if (diff>0) for(let i=0;i<diff;i++) sesPorRA[i]++;
-  if (diff<0) for(let i=0;i<(-diff);i++) sesPorRA[i]--;
-
-  const asignaciones=[]; let sIdx=0;
-  RAs.forEach((ra,raIdx) => {
-    const n=sesPorRA[raIdx], mis=sesiones.slice(sIdx,sIdx+n);
-    asignaciones.push({ra,raIdx,sesiones:mis,horas:mis.reduce((a,s)=>a+s.horas,0)});
-    sIdx+=n;
+function _buildAsignaciones(sesCounts) {
+  let idx = 0;
+  return RAs.map((ra, raIdx) => {
+    const n = sesCounts[raIdx] || 0;
+    const mis = planSesiones.slice(idx, idx + n);
+    idx += n;
+    return { ra, raIdx, sesiones: mis, horas: mis.reduce((a, s) => a + s.horas, 0) };
   });
+}
 
-  lastAsignaciones=asignaciones;
-  planMap=new Map();
-  asignaciones.forEach(({ra,sesiones:ses}) => ses.forEach(s => planMap.set(s.iso+'|'+s.modulo,{raNum:ra.num,raContenido:ra.contenido})));
+function _renderPlanCards(asignaciones) {
+  const totalSes = planSesiones.length;
+  const planContent = byId('planContent');
 
-  const planContent=byId('planContent'); planContent.innerHTML='';
+  // Rebuild bar + cards (keep stats resumen at top untouched)
+  const existing = planContent.querySelectorAll('.plan-adjustable');
+  existing.forEach(e => e.remove());
 
-  // Stats
-  const resumen=document.createElement('div');
-  resumen.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px';
-  [{label:'Sesiones totales',val:totalSes,icon:'📅'},{label:'Horas totales',val:totalHoras.toFixed(1)+'h',icon:'⏱'},{label:'RAs',val:nRAs,icon:'🎯'},{label:'Media por RA',val:(totalSes/nRAs).toFixed(1)+' ses.',icon:'📊'}].forEach(s=>{
-    resumen.innerHTML+=`<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px">${s.icon}</div><div style="font-size:17px;font-weight:700;margin:4px 0">${s.val}</div><div style="font-size:11px;color:var(--muted)">${s.label}</div></div>`;
+  // Bar wrapper
+  const tw = document.createElement('div');
+  tw.className = 'plan-adjustable'; tw.style.marginBottom = '16px';
+  let barHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">Distribución proporcional — <span id="planTotalBadge"></span></div><div class="plan-bar">';
+  asignaciones.forEach(({ ra, raIdx, sesiones: ses }) => {
+    if (!ses.length) return;
+    const pct = (ses.length / totalSes * 100).toFixed(1), col = RA_COLORS[raIdx % 8];
+    barHTML += `<div class="plan-bar-seg" style="flex:${ses.length};background:${col.badge}" title="${esc(ra.num)}: ${ses.length} ses. (${pct}%)">${ra.num}</div>`;
   });
-  planContent.appendChild(resumen);
-
-  // Bar
-  const tw=document.createElement('div'); tw.style.marginBottom='16px';
-  let barHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">Distribución proporcional</div><div class="plan-bar">';
-  asignaciones.forEach(({ra,raIdx,sesiones:ses})=>{
-    if(!ses.length)return;
-    const pct=(ses.length/totalSes*100).toFixed(1), col=RA_COLORS[raIdx%8];
-    barHTML+=`<div class="plan-bar-seg" style="flex:${ses.length};background:${col.badge}" title="${esc(ra.num)}: ${ses.length} ses. (${pct}%)">${ra.num}</div>`;
+  barHTML += '</div><div class="plan-legend">';
+  asignaciones.forEach(({ ra, raIdx, sesiones: ses, horas }) => {
+    const col = RA_COLORS[raIdx % 8];
+    barHTML += `<span class="plan-legend-item" style="background:${col.bg};border:1px solid ${col.border};color:${col.text}"><strong>${esc(ra.num)}</strong> ${ses.length} ses · ${horas.toFixed(1)}h</span>`;
   });
-  barHTML+='</div><div class="plan-legend">';
-  asignaciones.forEach(({ra,raIdx,sesiones:ses,horas})=>{
-    const col=RA_COLORS[raIdx%8];
-    barHTML+=`<span class="plan-legend-item" style="background:${col.bg};border:1px solid ${col.border};color:${col.text}"><strong>${esc(ra.num)}</strong>${ses.length} ses · ${horas.toFixed(1)}h</span>`;
-  });
-  barHTML+='</div>';
-  tw.innerHTML=barHTML; planContent.appendChild(tw);
+  barHTML += '</div>';
+  tw.innerHTML = barHTML;
+  planContent.appendChild(tw);
 
-  const hr=document.createElement('div'); hr.className='hr'; planContent.appendChild(hr);
+  const hr = document.createElement('div');
+  hr.className = 'hr plan-adjustable'; planContent.appendChild(hr);
 
-  asignaciones.forEach(({ra,raIdx,sesiones:ses,horas})=>{
-    if(!ses.length)return;
-    const col=RA_COLORS[raIdx%8];
-    const card=document.createElement('div');
-    card.style.cssText=`background:${col.bg};border:1px solid ${col.border};border-radius:12px;padding:14px;margin-bottom:10px`;
-    let ceHTML='';
-    if(ra.ces.length){
-      ceHTML='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">';
-      ra.ces.forEach(ce=>{ceHTML+=`<span style="background:#fff;border:1px solid ${col.border};border-radius:5px;padding:2px 7px;font-size:11px;color:${col.text}"><strong>${esc(ce.num)}</strong> ${esc(ce.desc.length>50?ce.desc.slice(0,50)+'…':ce.desc)}</span>`;});
-      ceHTML+='</div>';
+  asignaciones.forEach(({ ra, raIdx, sesiones: ses, horas }) => {
+    const col = RA_COLORS[raIdx % 8];
+    const card = document.createElement('div');
+    card.className = 'plan-adjustable';
+    card.style.cssText = `background:${col.bg};border:1px solid ${col.border};border-radius:12px;padding:14px;margin-bottom:10px`;
+    let ceHTML = '';
+    if (ra.ces.length) {
+      ceHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">';
+      ra.ces.forEach(ce => { ceHTML += `<span style="background:#fff;border:1px solid ${col.border};border-radius:5px;padding:2px 7px;font-size:11px;color:${col.text}"><strong>${esc(ce.num)}</strong> ${esc(ce.desc.length > 50 ? ce.desc.slice(0, 50) + '…' : ce.desc)}</span>`; });
+      ceHTML += '</div>';
     }
-    const sesId='ses_'+raIdx;
-    const sesRows=ses.map(s=>`<tr><td style="padding:4px 8px;color:var(--muted)">${s.fecha}</td><td style="padding:4px 8px;color:var(--muted)">${s.dia}</td><td style="padding:4px 8px;font-size:12px">${esc(s.modulo)}</td><td style="padding:4px 8px;color:var(--muted)">${s.inicio}–${s.fin}</td><td style="padding:4px 8px;font-weight:600;color:${col.text}">${s.horas}h</td></tr>`).join('');
-    card.innerHTML=`
+    const sesId = 'ses_' + raIdx;
+    const sesRows = ses.map(s => `<tr><td style="padding:4px 8px;color:var(--muted)">${s.fecha}</td><td style="padding:4px 8px;color:var(--muted)">${s.dia}</td><td style="padding:4px 8px;font-size:12px">${esc(s.modulo)}</td><td style="padding:4px 8px;color:var(--muted)">${s.inicio}–${s.fin}</td><td style="padding:4px 8px;font-weight:600;color:${col.text}">${s.horas}h</td></tr>`).join('');
+    const btnStyle = `background:#fff8;border:1px solid ${col.border};color:${col.text};border-radius:7px;padding:3px 8px;font-size:12px;font-weight:700;cursor:pointer;line-height:1`;
+    const dateRange = ses.length ? `${ses[0].fecha} → ${ses[ses.length - 1].fecha}` : '—';
+    card.innerHTML = `
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
             <span style="background:${col.badge};color:#fff;font-weight:800;border-radius:7px;padding:3px 10px;font-size:13px">${esc(ra.num)}</span>
-            <span style="font-size:13px;font-weight:600;flex:1">${esc(ra.contenido.length>80?ra.contenido.slice(0,80)+'…':ra.contenido)}</span>
+            <span style="font-size:13px;font-weight:600;flex:1">${esc(ra.contenido.length > 80 ? ra.contenido.slice(0, 80) + '…' : ra.contenido)}</span>
           </div>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:${col.text}">
-            <span>📅 <strong>${ses.length}</strong> sesiones</span>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:${col.text};align-items:center">
+            <span style="display:flex;align-items:center;gap:4px">
+              📅
+              <button onclick="adjustPlanSessions(${raIdx},-1)" style="${btnStyle}" title="Quitar sesión">−</button>
+              <strong style="min-width:22px;text-align:center">${ses.length}</strong>
+              <button onclick="adjustPlanSessions(${raIdx},1)" style="${btnStyle}" title="Añadir sesión">+</button>
+              sesiones
+            </span>
             <span>⏱ <strong>${horas.toFixed(1)}h</strong></span>
-            <span>🗓 ${ses[0].fecha} → ${ses[ses.length-1].fecha}</span>
+            <span>🗓 ${dateRange}</span>
           </div>${ceHTML}
         </div>
         <button onclick="const el=document.getElementById('${sesId}');el.style.display=el.style.display==='none'?'block':'none'" style="background:${col.bg};border:1px solid ${col.border};color:${col.text};border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap">Ver sesiones ▾</button>
@@ -1827,12 +1810,89 @@ byId('planificar').onclick = () => {
     planContent.appendChild(card);
   });
 
-  const nota=document.createElement('p');
-  nota.style.cssText='font-size:12px;color:var(--muted);margin-top:4px;font-style:italic';
-  nota.textContent='Distribución ponderada según el número de CEs de cada RA. Genera el calendario para ver la columna «RA Planificado».';
+  const nota = document.createElement('p');
+  nota.className = 'plan-adjustable';
+  nota.style.cssText = 'font-size:12px;color:var(--muted);margin-top:4px;font-style:italic';
+  nota.textContent = 'Usa los botones + / − para ajustar sesiones por RA manteniendo el total. Genera el calendario para ver la columna «RA Planificado».';
   planContent.appendChild(nota);
-  byId('salidaPlan').style.display='block';
-  byId('salidaPlan').scrollIntoView({behavior:'smooth',block:'start'});
+
+  const badge = byId('planTotalBadge');
+  if (badge) badge.textContent = `${totalSes} sesiones totales`;
+}
+
+function adjustPlanSessions(raIdx, delta) {
+  const total = planSesiones.length;
+  if (delta > 0) {
+    // Find the RA with the most sessions to steal from
+    let maxIdx = -1, maxVal = 0;
+    planSesCounts.forEach((c, i) => { if (i !== raIdx && c > maxVal) { maxIdx = i; maxVal = c; } });
+    if (maxIdx === -1 || maxVal <= 0) return;
+    planSesCounts[raIdx]++;
+    planSesCounts[maxIdx]--;
+  } else {
+    if (planSesCounts[raIdx] <= 0) return;
+    // Give to the RA with fewest sessions
+    let minIdx = -1, minVal = Infinity;
+    planSesCounts.forEach((c, i) => { if (i !== raIdx && c < minVal) { minIdx = i; minVal = c; } });
+    if (minIdx === -1) return;
+    planSesCounts[raIdx]--;
+    planSesCounts[minIdx]++;
+  }
+  const asignaciones = _buildAsignaciones(planSesCounts);
+  lastAsignaciones = asignaciones;
+  planMap = new Map();
+  asignaciones.forEach(({ ra, sesiones: ses }) => ses.forEach(s => planMap.set(s.iso + '|' + s.modulo, { raNum: ra.num, raContenido: ra.contenido })));
+  _renderPlanCards(asignaciones);
+  scheduleAutoSave();
+}
+
+byId('planificar').onclick = () => {
+  const ini = byId('inicio').value, fin = byId('fin').value;
+  if (!ini || !fin) return alert('Primero indica las fechas del curso (paso 1)');
+  if (!modulos.length) return alert('Añade al menos un módulo (paso 5)');
+  if (!RAs.length) return alert('Añade al menos un RA (apartado 6)');
+  const dI = new Date(ini + 'T00:00:00'), dF = new Date(fin + 'T00:00:00');
+  if (dF < dI) return alert('Fecha fin debe ser >= inicio');
+
+  planSesiones = [];
+  const oneDay = 86400000;
+  for (let t = dI.getTime(); t <= dF.getTime(); t += oneDay) {
+    const d = new Date(t), iso = isoDate(d);
+    const isF = festivos.has(iso), isFe = feoes.has(iso), ev = evaluaciones.get(iso), isEB = !!(ev && ev.bloquea);
+    if (isF || isFe || isEB) continue;
+    modulos.forEach(m => {
+      if (m.dow === d.getDay()) planSesiones.push({ iso, fecha: fmtDate(d), dia: DIAS[d.getDay()], horas: +horasEntre(m.inicio, m.fin).toFixed(2), modulo: m.nombre, inicio: m.inicio, fin: m.fin });
+    });
+  }
+  if (!planSesiones.length) return alert('No hay sesiones disponibles en ese rango.');
+
+  const totalSes = planSesiones.length, totalHoras = planSesiones.reduce((a, s) => a + s.horas, 0), nRAs = RAs.length;
+  const pesos = RAs.map(ra => Math.max(1, ra.ces.length)), totalPeso = pesos.reduce((a, p) => a + p, 0);
+  planSesCounts = pesos.map(p => Math.round(totalSes * p / totalPeso));
+  const diff = totalSes - planSesCounts.reduce((a, v) => a + v, 0);
+  if (diff > 0) for (let i = 0; i < diff; i++) planSesCounts[i]++;
+  if (diff < 0) for (let i = 0; i < -diff; i++) planSesCounts[i]--;
+
+  const asignaciones = _buildAsignaciones(planSesCounts);
+  lastAsignaciones = asignaciones;
+  planMap = new Map();
+  asignaciones.forEach(({ ra, sesiones: ses }) => ses.forEach(s => planMap.set(s.iso + '|' + s.modulo, { raNum: ra.num, raContenido: ra.contenido })));
+
+  const planContent = byId('planContent');
+  planContent.innerHTML = '';
+
+  // Stats (fixed header, not rebuilt on adjust)
+  const resumen = document.createElement('div');
+  resumen.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px';
+  [{ label: 'Sesiones totales', val: totalSes, icon: '📅' }, { label: 'Horas totales', val: totalHoras.toFixed(1) + 'h', icon: '⏱' }, { label: 'RAs', val: nRAs, icon: '🎯' }, { label: 'Media por RA', val: (totalSes / nRAs).toFixed(1) + ' ses.', icon: '📊' }].forEach(s => {
+    resumen.innerHTML += `<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px">${s.icon}</div><div style="font-size:17px;font-weight:700;margin:4px 0">${s.val}</div><div style="font-size:11px;color:var(--muted)">${s.label}</div></div>`;
+  });
+  planContent.appendChild(resumen);
+
+  _renderPlanCards(asignaciones);
+
+  byId('salidaPlan').style.display = 'block';
+  byId('salidaPlan').scrollIntoView({ behavior: 'smooth', block: 'start' });
   scheduleAutoSave();
 };
 

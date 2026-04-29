@@ -196,6 +196,39 @@ app.post('/api/cuaderno', auth, (req, res) => {
   res.json({ id: r.lastInsertRowid, title: t });
 });
 
+// Auto-cuaderno: GET/PUT without ID (gets/creates the user's single cuaderno)
+app.get('/api/cuaderno', auth, (req, res) => {
+  let c = db.prepare("SELECT * FROM cuadernos WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1").get(req.user.id);
+  if (!c) {
+    const r = db.prepare("INSERT INTO cuadernos (user_id, title) VALUES (?, ?)").run(req.user.id, 'Mi Cuaderno');
+    c = db.prepare("SELECT * FROM cuadernos WHERE id = ?").get(r.lastInsertRowid);
+  }
+  res.json(parseCuaderno(c));
+});
+
+app.put('/api/cuaderno', auth, (req, res) => {
+  let c = db.prepare("SELECT id FROM cuadernos WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1").get(req.user.id);
+  if (!c) {
+    const r = db.prepare("INSERT INTO cuadernos (user_id, title) VALUES (?, ?)").run(req.user.id, 'Mi Cuaderno');
+    c = { id: r.lastInsertRowid };
+  }
+  const { title, state_json, calendar_json, plan_json } = req.body || {};
+  db.prepare(`UPDATE cuadernos SET
+    title = COALESCE(?, title),
+    state_json = ?,
+    calendar_json = ?,
+    plan_json = ?,
+    updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?`).run(
+    title ? String(title).trim() : null,
+    JSON.stringify(state_json || {}),
+    JSON.stringify(calendar_json || []),
+    JSON.stringify(plan_json || {}),
+    c.id
+  );
+  res.json({ ok: true });
+});
+
 app.get('/api/cuaderno/:id', auth, (req, res) => {
   const c = db.prepare("SELECT c.*, u.display_name FROM cuadernos c JOIN users u ON c.user_id = u.id WHERE c.id = ?").get(req.params.id);
   if (!c) return res.status(404).json({ error: 'No encontrado' });
