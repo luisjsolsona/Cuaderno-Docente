@@ -417,12 +417,16 @@
       <!-- Seguimientos tab -->
       <div id="tab-seguimientos" style="display:none">
         <div class="card" style="margin-bottom:14px">
-          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-            <h2 style="margin:0">📋 Seguimientos por ciclo</h2>
-            <select id="admin-ciclo-sel" style="flex:1;max-width:340px" onchange="loadAdminSeguimientos()">
-              <option value="">— Selecciona un ciclo —</option>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <h2 style="margin:0;white-space:nowrap">📋 Seguimientos</h2>
+            <select id="admin-ciclo-sel" style="flex:1 1 200px;max-width:300px" onchange="loadAdminSeguimientos()">
+              <option value="">— Ciclo —</option>
             </select>
-            <button class="btn ghost small" onclick="loadAdminSeguimientos()">🔄 Actualizar</button>
+            <select id="admin-mes-sel" style="flex:1 1 160px;max-width:220px" onchange="applyAdminSeguimientoFilter()">
+              <option value="">— Todos los meses —</option>
+            </select>
+            <button class="btn ghost small" onclick="loadAdminSeguimientos()">🔄</button>
+            <button class="btn primary small" onclick="exportSeguimientoWord()" id="btn-export-seg" style="display:none">⬇ Exportar Word</button>
           </div>
         </div>
         <div id="admin-seguimientos-content"></div>
@@ -1467,6 +1471,8 @@ function renderAdminCuaderno(data) {
 }
 
 // ── Pestaña Seguimientos (admin) ─────────────────────────────────────────────
+let _adminSegData = []; // cache for export
+
 async function loadAdminCiclos() {
   const sel = byId('admin-ciclo-sel');
   if (!sel) return;
@@ -1474,7 +1480,7 @@ async function loadAdminCiclos() {
     const res = await apiFetch('/api/ciclos');
     const ciclos = await res.json();
     const prev = sel.value;
-    sel.innerHTML = '<option value="">— Selecciona un ciclo —</option>' +
+    sel.innerHTML = '<option value="">— Ciclo —</option>' +
       ciclos.map(c => `<option value="${esc(c)}" ${c===prev?'selected':''}>${esc(c)}</option>`).join('');
     if (prev && ciclos.includes(prev)) loadAdminSeguimientos();
     else if (ciclos.length === 1) { sel.value = ciclos[0]; loadAdminSeguimientos(); }
@@ -1485,28 +1491,77 @@ async function loadAdminSeguimientos() {
   const ciclo = byId('admin-ciclo-sel')?.value || '';
   const container = byId('admin-seguimientos-content');
   if (!container) return;
-  if (!ciclo) { container.innerHTML = '<p class="empty-state">Selecciona un ciclo para ver los seguimientos.</p>'; return; }
+  if (!ciclo) {
+    container.innerHTML = '<p class="empty-state">Selecciona un ciclo para ver los seguimientos.</p>';
+    byId('admin-mes-sel').innerHTML = '<option value="">— Todos los meses —</option>';
+    byId('btn-export-seg').style.display = 'none';
+    return;
+  }
   container.innerHTML = '<p class="empty-state">Cargando...</p>';
   try {
     const res = await apiFetch('/api/seguimientos?ciclo=' + encodeURIComponent(ciclo));
     const list = await res.json();
-    if (!list.length) { container.innerHTML = '<p class="empty-state">No hay cuadernos en este ciclo todavía.</p>'; return; }
+    _adminSegData = list;
+    if (!list.length) {
+      container.innerHTML = '<p class="empty-state">No hay cuadernos en este ciclo todavía.</p>';
+      return;
+    }
     container.innerHTML = '';
     list.forEach(c => renderAdminSeguimientoCard(c, container));
+    populateAdminMesSel(list);
+    byId('btn-export-seg').style.display = 'inline-flex';
+    applyAdminSeguimientoFilter();
   } catch {
     container.innerHTML = '<p class="empty-state">Error cargando seguimientos.</p>';
   }
 }
 
+function populateAdminMesSel(list) {
+  // Collect all YYYY-MM keys across all cuadernos
+  const monthSet = new Set();
+  list.forEach(c => {
+    const s = c.state_json || {};
+    if (s.inicio && s.fin) {
+      getMonthRange(s.inicio, s.fin).forEach(({ year, month }) => {
+        monthSet.add(`${year}-${String(month+1).padStart(2,'0')}`);
+      });
+    }
+  });
+  const months = [...monthSet].sort();
+  const sel = byId('admin-mes-sel');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Todos los meses —</option>' +
+    months.map(ym => {
+      const [y, m] = ym.split('-');
+      const label = `${MESES_ES[parseInt(m)-1]} ${y}`;
+      return `<option value="${ym}" ${ym===prev?'selected':''}>${label}</option>`;
+    }).join('');
+}
+
+function applyAdminSeguimientoFilter() {
+  const mes = byId('admin-mes-sel')?.value || '';
+  // Show/hide month sections and their module cards
+  byId('admin-seguimientos-content')?.querySelectorAll('[data-month-section]').forEach(el => {
+    el.style.display = (!mes || el.dataset.monthSection === mes) ? '' : 'none';
+  });
+  // Hide entire cuaderno card if all months hidden
+  byId('admin-seguimientos-content')?.querySelectorAll('[data-cuaderno-id]').forEach(wrap => {
+    const sections = wrap.querySelectorAll('[data-month-section]');
+    const anyVisible = !mes || [...sections].some(s => s.dataset.monthSection === mes);
+    wrap.style.display = anyVisible ? '' : 'none';
+  });
+}
+
 function renderAdminSeguimientoCard(c, container) {
-  const s    = c.state_json    || {};
-  const seg  = c.seguimiento_json || {};
+  const s       = c.state_json       || {};
+  const seg     = c.seguimiento_json || {};
   const modList = s.modulos || [];
-  const ini  = s.inicio, fin = s.fin;
+  const ini = s.inicio, fin = s.fin;
 
   const wrap = document.createElement('div');
   wrap.className = 'card';
   wrap.style.marginBottom = '16px';
+  wrap.dataset.cuadernoId = c.id;
 
   // Header
   const head = document.createElement('div');
@@ -1520,7 +1575,6 @@ function renderAdminSeguimientoCard(c, container) {
   `;
   wrap.appendChild(head);
 
-  // If no dates or modules, show a message
   if (!ini || !fin || !modList.length) {
     const msg = document.createElement('p');
     msg.className = 'empty-state';
@@ -1530,17 +1584,20 @@ function renderAdminSeguimientoCard(c, container) {
     return;
   }
 
-  const months = typeof getMonthRange === 'function' ? getMonthRange(ini, fin) : [];
+  getMonthRange(ini, fin).forEach(({ year, month, label }) => {
+    const ym = `${year}-${String(month+1).padStart(2,'0')}`;
 
-  months.forEach(({ year, month, label }) => {
+    const section = document.createElement('div');
+    section.dataset.monthSection = ym;
+
     const mHead = document.createElement('div');
     mHead.className = 'seg-month-header';
     mHead.style.fontSize = '13px';
     mHead.textContent = '📅 ' + label;
-    wrap.appendChild(mHead);
+    section.appendChild(mHead);
 
     modList.forEach(m => {
-      const key = `${m.nombre}_${year}-${String(month+1).padStart(2,'0')}`;
+      const key = `${m.nombre}_${ym}`;
       const card = document.createElement('div');
       card.className = 'seg-card';
       card.style.marginBottom = '8px';
@@ -1551,30 +1608,31 @@ function renderAdminSeguimientoCard(c, container) {
           <button onmousedown="event.preventDefault();document.execCommand('italic')"><i>C</i></button>
           <button onmousedown="event.preventDefault();document.execCommand('underline')"><u>S</u></button>
           <button onmousedown="event.preventDefault();document.execCommand('insertUnorderedList')">• Lista</button>
-          <button onmousedown="event.preventDefault();document.execCommand('insertOrderedList')">1. Lista num.</button>
+          <button onmousedown="event.preventDefault();document.execCommand('insertOrderedList')">1. Numerada</button>
         </div>
         <div class="seg-editor" contenteditable="true" data-cuaderno="${c.id}" data-key="${esc(key)}">${seg[key]||''}</div>
       `;
-      wrap.appendChild(card);
+      section.appendChild(card);
     });
+
+    wrap.appendChild(section);
   });
 
-  wrap.dataset.cuadernoId = c.id;
   container.appendChild(wrap);
 }
 
 async function saveAdminSeguimiento(cuadernoId, btn) {
   const wrap = btn.closest('[data-cuaderno-id]');
   if (!wrap) return;
-  const editors = wrap.querySelectorAll('.seg-editor[data-cuaderno]');
   const seguimiento_json = {};
-  editors.forEach(el => { seguimiento_json[el.dataset.key] = el.innerHTML; });
+  wrap.querySelectorAll('.seg-editor[data-cuaderno]').forEach(el => {
+    seguimiento_json[el.dataset.key] = el.innerHTML;
+  });
   const prev = btn.textContent;
   btn.disabled = true; btn.textContent = '⟳ Guardando…';
   try {
     const res = await apiFetch('/api/cuaderno/' + cuadernoId + '/seguimiento', {
-      method: 'PATCH',
-      body: JSON.stringify({ seguimiento_json })
+      method: 'PATCH', body: JSON.stringify({ seguimiento_json })
     });
     if (!res.ok) throw new Error();
     btn.textContent = '✓ Guardado';
@@ -1583,6 +1641,86 @@ async function saveAdminSeguimiento(cuadernoId, btn) {
     btn.textContent = '✕ Error';
     setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 2000);
   }
+}
+
+// ── Exportar seguimientos filtrados a Word ───────────────────────────────────
+function exportSeguimientoWord() {
+  const ciclo = byId('admin-ciclo-sel')?.value || '';
+  const mesVal = byId('admin-mes-sel')?.value  || '';
+  const [mesY, mesM] = mesVal ? mesVal.split('-') : [null, null];
+  const mesLabel = mesVal ? `${MESES_ES[parseInt(mesM)-1]} ${mesY}` : 'Todos los meses';
+
+  // Collect visible editors from the DOM (reflects current edits)
+  const content = byId('admin-seguimientos-content');
+  if (!content) return;
+
+  let bodyHTML = `<h1 style="color:#1f497d;border-bottom:2pt solid #1f497d;padding-bottom:6pt">
+    Seguimiento de la programación
+  </h1>
+  <p style="color:#555;font-size:10pt;margin-bottom:18pt">
+    <b>Ciclo:</b> ${esc(ciclo)} &nbsp;|&nbsp; <b>Período:</b> ${esc(mesLabel)}
+  </p>`;
+
+  // Iterate visible cuaderno cards
+  content.querySelectorAll('[data-cuaderno-id]').forEach(wrap => {
+    if (wrap.style.display === 'none') return;
+    const titleEl  = wrap.querySelector('[style*="font-weight:700"]');
+    const ownerEl  = wrap.querySelector('[style*="color:var(--muted)"]');
+    const title    = titleEl?.textContent?.trim() || '';
+    const owner    = ownerEl?.textContent?.trim() || '';
+
+    bodyHTML += `<h2 style="color:#2563eb;margin-top:24pt;margin-bottom:4pt;border-bottom:1pt solid #2563eb">${esc(title)}</h2>
+    <p style="font-size:9pt;color:#666;margin-bottom:10pt">${esc(owner)}</p>`;
+
+    wrap.querySelectorAll('[data-month-section]').forEach(section => {
+      if (section.style.display === 'none') return;
+      section.querySelectorAll('.seg-card').forEach(card => {
+        const titleDiv = card.querySelector('.seg-title');
+        const editor   = card.querySelector('.seg-editor');
+        const modTitle = titleDiv?.textContent?.replace('📋','').trim() || '';
+        const html     = editor?.innerHTML || '';
+        const isEmpty  = !html || html === '<br>' || editor?.textContent?.trim() === '';
+
+        bodyHTML += `<h3 style="color:#059669;margin-top:14pt;margin-bottom:4pt">${esc(modTitle)}</h3>`;
+        bodyHTML += isEmpty
+          ? `<p style="color:#aaa;font-style:italic;font-size:10pt">Sin contenido.</p>`
+          : `<div style="margin-left:12pt;font-size:11pt">${html}</div>`;
+      });
+    });
+  });
+
+  const doc = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+    xmlns:w="urn:schemas-microsoft-com:office:word"
+    xmlns="http://www.w3.org/TR/REC-html40">
+  <head>
+    <meta charset="utf-8">
+    <title>Seguimiento ${ciclo} ${mesLabel}</title>
+    <!--[if gte mso 9]><xml><w:WordDocument>
+      <w:View>Print</w:View><w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument></xml><![endif]-->
+    <style>
+      @page { margin: 2cm; }
+      body { font-family: Calibri, sans-serif; font-size: 11pt; color: #222; }
+      h1   { font-size: 16pt; }
+      h2   { font-size: 13pt; }
+      h3   { font-size: 11pt; }
+      ul, ol { margin-left: 20pt; }
+      li   { margin-bottom: 3pt; }
+      p    { margin: 4pt 0; }
+    </style>
+  </head>
+  <body>${bodyHTML}</body>
+  </html>`;
+
+  const fname = `Seguimiento_${ciclo.replace(/\s+/g,'_')}_${mesVal||'todos'}.doc`;
+  const blob  = new Blob(['﻿' + doc], { type: 'application/msword;charset=utf-8' });
+  const a     = document.createElement('a');
+  a.href      = URL.createObjectURL(blob);
+  a.download  = fname;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 200);
 }
 
 // === STATE (DOCENTE) ===
