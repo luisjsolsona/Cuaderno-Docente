@@ -238,6 +238,31 @@
     .tab-empty { text-align: center; padding: 60px 20px; color: var(--muted); }
     .tab-empty-icon { font-size: 48px; margin-bottom: 12px; }
 
+    /* === CALENDAR FILTER === */
+    .cal-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; padding: 10px 12px; background: var(--bg); border-radius: 10px; border: 1px solid var(--border); }
+    .cal-filter-bar select, .cal-filter-bar input { flex: 1 1 140px; max-width: 200px; font-size: 12px; padding: 6px 10px; }
+    .cal-filter-bar label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    #filter-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+    /* === SEGUIMIENTO === */
+    .seg-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+    .seg-title { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .seg-toolbar { display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap; }
+    .seg-toolbar button { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 3px 8px; font-size: 12px; cursor: pointer; }
+    .seg-toolbar button:hover { background: #dbeafe; border-color: var(--accent); transform: none; box-shadow: none; }
+    .seg-editor { min-height: 100px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; outline: none; background: var(--input-bg); line-height: 1.5; }
+    .seg-editor:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .seg-month-header { font-size: 16px; font-weight: 800; color: var(--ink); margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--accent); }
+
+    /* === ROLES === */
+    .role-badge.jefatura { background: #fef3c7; color: #92400e; }
+    .badge-jefatura { background: #fef3c7; color: #92400e; }
+    .readonly-banner { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 10px; padding: 10px 16px; font-size: 13px; color: #92400e; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+    /* === HOME PANEL SECTIONS === */
+    .home-section-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin: 20px 0 8px; }
+    .ciclo-group-title { font-size: 12px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .5px; padding: 6px 10px; background: #eff6ff; border-radius: 6px; margin: 14px 0 8px; grid-column: 1/-1; }
+
     /* === CATEDU IMPORT WIZARD === */
     .hidden { display: none !important; }
     .import-modal { background: var(--card); border-radius: 14px; width: 680px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,0.18); overflow: hidden; }
@@ -392,9 +417,11 @@
     <!-- ========= DOCENTE PANEL ========= -->
     <div id="docente-panel" style="display:none">
       <!-- Title row -->
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
         <button class="btn ghost small" onclick="goHome()" style="white-space:nowrap">← Cuadernos</button>
-        <input type="text" id="cuaderno-title" placeholder="Título del cuaderno (ej. CFGM Informática 2024-25)" style="flex:1 1 240px;max-width:420px;font-weight:600;font-size:14px" />
+        <input type="text" id="cuaderno-title" placeholder="Título del cuaderno (ej. SORE 0224)" style="flex:1 1 200px;max-width:320px;font-weight:600;font-size:14px" />
+        <input type="text" id="cuaderno-ciclo" placeholder="Ciclo formativo (ej. CFGM Informática)" style="flex:1 1 200px;max-width:300px;font-size:13px" />
+        <div id="readonly-banner" class="readonly-banner" style="display:none">👁 Modo lectura — cuaderno de otro docente</div>
       </div>
 
       <!-- Tab navigation -->
@@ -402,6 +429,7 @@
         <button class="doc-tab active" data-doctab="temporalizacion" onclick="showDocTab('temporalizacion')">📅 Temporalización</button>
         <button class="doc-tab" data-doctab="planificacion" onclick="showDocTab('planificacion')">🧠 Planificación</button>
         <button class="doc-tab" data-doctab="calendario" onclick="showDocTab('calendario')">📆 Calendario</button>
+        <button class="doc-tab" data-doctab="seguimiento" onclick="showDocTab('seguimiento')">📋 Seguimiento</button>
       </div>
 
       <!-- TAB: Temporalización -->
@@ -553,6 +581,24 @@
           </div>
           <div id="meta" class="muted" style="font-size:13px;margin-bottom:10px"></div>
           <p style="font-size:12px;color:var(--accent2);margin:0 0 8px">💡 Puedes editar la columna <strong>Observaciones</strong> y el <strong>RA Planificado</strong> directamente en la tabla. Los cambios se guardan automáticamente.</p>
+
+          <!-- Filter bar -->
+          <div class="cal-filter-bar">
+            <label>Filtrar:</label>
+            <select id="filter-tipo" onchange="applyCalFilter()">
+              <option value="">Todos los tipos</option>
+              <option value="clase">Clase</option>
+              <option value="festivo">Festivo</option>
+              <option value="feoe">FEOE</option>
+              <option value="eval">Evaluación</option>
+            </select>
+            <select id="filter-modulo" onchange="applyCalFilter()"><option value="">Todos los módulos</option></select>
+            <select id="filter-ra" onchange="applyCalFilter()"><option value="">Todos los RAs</option></select>
+            <input type="text" id="filter-obs" placeholder="Buscar observaciones…" oninput="applyCalFilter()" style="flex:1 1 160px;max-width:220px" />
+            <span id="filter-count"></span>
+            <button class="btn ghost small" onclick="clearCalFilter()">✕ Limpiar</button>
+          </div>
+
           <div class="table-wrap">
             <table id="tabla">
               <thead><tr>
@@ -571,6 +617,17 @@
           <button class="btn primary" style="margin-top:16px" onclick="showDocTab('temporalizacion')">← Ir a Temporalización</button>
         </div>
       </div><!-- /doctab-calendario -->
+
+      <!-- TAB: Seguimiento de la programación -->
+      <div id="doctab-seguimiento" class="doc-tab-panel" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+          <div>
+            <h2 style="margin:0">📋 Seguimiento de la programación</h2>
+            <p class="muted" style="font-size:13px;margin:4px 0 0">Un editor por módulo y mes, desde el inicio hasta el final del curso.</p>
+          </div>
+        </div>
+        <div id="seguimientoContent"></div>
+      </div><!-- /doctab-seguimiento -->
     </div>
 
     <!-- ========= ADMIN VIEW CUADERNO ========= -->
@@ -729,10 +786,12 @@ async function showApp() {
 
   byId('header-username').textContent = currentUser.display_name || currentUser.username;
   const roleBadge = byId('header-role');
-  roleBadge.textContent = currentUser.role === 'admin' ? 'Admin' : 'Docente';
-  roleBadge.className = 'role-badge' + (currentUser.role === 'admin' ? ' admin' : '');
+  const roleLabels = { admin: 'Admin', jefatura: 'Jefatura', docente: 'Docente' };
+  roleBadge.textContent = roleLabels[currentUser.role] || currentUser.role;
+  roleBadge.className = 'role-badge' + (currentUser.role === 'admin' ? ' admin' : currentUser.role === 'jefatura' ? ' jefatura' : '');
 
-  if (currentUser.role === 'admin') {
+  const isPriv = currentUser.role === 'admin' || currentUser.role === 'jefatura';
+  if (isPriv) {
     byId('btn-admin-panel').style.display = 'inline-flex';
     byId('btn-my-cuaderno').style.display = 'inline-flex';
     showAdminPanel();
@@ -835,81 +894,167 @@ function showHomePanel() {
 
 function goHome() {
   if (!currentUser) return;
-  if (currentUser.role === 'admin') showAdminPanel();
+  if (currentUser.role === 'admin' || currentUser.role === 'jefatura') showAdminPanel();
   else showHomePanel();
+}
+
+function buildCuadernoCard(c, { editable = true } = {}) {
+  const card = document.createElement('div');
+  card.className = 'home-card clickable';
+  const badges = [];
+  if (c.has_state) badges.push('<span class="badge badge-clase">Con datos</span>');
+  if (c.has_calendar) badges.push('<span class="badge badge-eval">Con calendario</span>');
+  if (c.has_plan) badges.push('<span class="badge" style="background:#ede9fe;color:#7c3aed">Con planificación</span>');
+  if (!editable) badges.push('<span class="badge" style="background:#fef3c7;color:#92400e">Solo lectura</span>');
+  const ownerLine = c.owner_name ? `<div class="home-card-meta" style="color:var(--accent)">👤 ${esc(c.owner_name)}</div>` : '';
+  const cicloLine = c.ciclo ? `<div class="home-card-meta" style="font-weight:600;color:var(--ink)">${esc(c.ciclo)}</div>` : '';
+  card.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="home-card-icon">${editable ? '📋' : '👁'}</div>
+      <div style="flex:1;min-width:0">
+        <div class="home-card-title">${esc(c.title || 'Mi Cuaderno')}</div>
+        ${cicloLine}${ownerLine}
+        <div class="home-card-meta">Actualizado: ${fmtDateTime(c.updated_at)}</div>
+      </div>
+    </div>
+    ${badges.length ? `<div class="home-card-badges">${badges.join('')}</div>` : ''}
+  `;
+  if (editable) {
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:6px;margin-top:4px';
+    const dupBtn = document.createElement('button');
+    dupBtn.className = 'btn ghost small';
+    dupBtn.textContent = '📋 Duplicar';
+    dupBtn.onclick = e => { e.stopPropagation(); duplicarCuaderno(c.id, c.title); };
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn ghost small';
+    delBtn.style.cssText = 'color:var(--danger);border-color:var(--danger)';
+    delBtn.textContent = '🗑 Eliminar';
+    delBtn.onclick = e => { e.stopPropagation(); deleteMiCuaderno(c.id, c.title || 'Mi Cuaderno'); };
+    actions.appendChild(dupBtn);
+    actions.appendChild(delBtn);
+    card.appendChild(actions);
+    card.onclick = () => openCuaderno(c.id, true);
+  } else {
+    card.onclick = () => openCuaderno(c.id, false);
+  }
+  return card;
 }
 
 async function loadMisCuadernos() {
   const container = byId('mis-cuadernos-list');
   container.innerHTML = '<p class="empty-state">Cargando...</p>';
   try {
-    const res = await apiFetch('/api/mis-cuadernos');
-    const list = await res.json();
+    const [resMios, resOtros] = await Promise.all([
+      apiFetch('/api/mis-cuadernos'),
+      apiFetch('/api/otros-cuadernos')
+    ]);
+    const mios = await resMios.json();
+    const otros = await resOtros.json();
     container.innerHTML = '';
 
+    // Group own cuadernos by ciclo
+    const porCiclo = {};
+    mios.forEach(c => { const g = c.ciclo || '—'; if (!porCiclo[g]) porCiclo[g] = []; porCiclo[g].push(c); });
+    const ciclos = Object.keys(porCiclo).sort((a,b) => a === '—' ? 1 : b === '—' ? -1 : a.localeCompare(b));
+
+    // New cuaderno button (always first)
     const newCard = document.createElement('div');
     newCard.className = 'home-card home-card-new';
     newCard.innerHTML = '<span style="font-size:28px">+</span><span>Nuevo cuaderno</span>';
     newCard.onclick = createNewCuaderno;
     container.appendChild(newCard);
 
-    list.forEach(c => {
-      const card = document.createElement('div');
-      card.className = 'home-card clickable';
-      const badges = [];
-      if (c.has_state) badges.push('<span class="badge badge-clase">Con datos</span>');
-      if (c.has_calendar) badges.push('<span class="badge badge-eval">Con calendario</span>');
-      if (c.has_plan) badges.push('<span class="badge" style="background:#ede9fe;color:#7c3aed">Con planificación</span>');
-      card.innerHTML = `
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="home-card-icon">📋</div>
-          <div style="flex:1;min-width:0">
-            <div class="home-card-title">${esc(c.title || 'Mi Cuaderno')}</div>
-            <div class="home-card-meta">Actualizado: ${fmtDateTime(c.updated_at)}</div>
-          </div>
-        </div>
-        ${badges.length ? `<div class="home-card-badges">${badges.join('')}</div>` : ''}
-      `;
-      const delBtn = document.createElement('button');
-      delBtn.className = 'btn ghost small';
-      delBtn.style.cssText = 'align-self:flex-start;font-size:11px;color:var(--danger);border-color:var(--danger)';
-      delBtn.textContent = '🗑 Eliminar';
-      delBtn.onclick = e => { e.stopPropagation(); deleteMiCuaderno(c.id, c.title || 'Mi Cuaderno'); };
-      card.appendChild(delBtn);
-      card.onclick = () => openCuaderno(c.id);
-      container.appendChild(card);
-    });
-
-    if (!list.length) {
+    if (ciclos.length) {
+      ciclos.forEach(ciclo => {
+        if (ciclos.length > 1 || ciclo !== '—') {
+          const label = document.createElement('div');
+          label.className = 'ciclo-group-title';
+          label.textContent = ciclo === '—' ? 'Sin ciclo asignado' : ciclo;
+          container.appendChild(label);
+        }
+        porCiclo[ciclo].forEach(c => container.appendChild(buildCuadernoCard(c, { editable: true })));
+      });
+    } else {
       const msg = document.createElement('p');
       msg.className = 'empty-state';
-      msg.style.cssText = 'grid-column:1/-1;text-align:center;padding:20px';
+      msg.style.cssText = 'grid-column:1/-1;padding:20px';
       msg.textContent = 'Aún no tienes cuadernos. Crea uno nuevo.';
       container.appendChild(msg);
     }
-  } catch {
+
+    // Others' cuadernos (read-only)
+    if (otros.length) {
+      const sep = document.createElement('div');
+      sep.className = 'home-section-title';
+      sep.style.cssText = 'grid-column:1/-1;margin-top:28px';
+      sep.textContent = '👥 Cuadernos de compañeros (solo lectura)';
+      container.appendChild(sep);
+
+      // Group by ciclo too
+      const otroCiclo = {};
+      otros.forEach(c => { const g = c.ciclo || '—'; if (!otroCiclo[g]) otroCiclo[g] = []; otroCiclo[g].push(c); });
+      const otrosCiclos = Object.keys(otroCiclo).sort((a,b) => a === '—' ? 1 : b === '—' ? -1 : a.localeCompare(b));
+      otrosCiclos.forEach(ciclo => {
+        if (otrosCiclos.length > 1 || ciclo !== '—') {
+          const label = document.createElement('div');
+          label.className = 'ciclo-group-title';
+          label.textContent = ciclo === '—' ? 'Sin ciclo asignado' : ciclo;
+          container.appendChild(label);
+        }
+        otroCiclo[ciclo].forEach(c => container.appendChild(buildCuadernoCard(c, { editable: false })));
+      });
+    }
+  } catch (e) {
     container.innerHTML = '<p class="empty-state">Error cargando cuadernos.</p>';
   }
 }
+
+let currentCuadernoEditable = true;
 
 async function createNewCuaderno() {
   try {
     const res = await apiFetch('/api/cuaderno', { method: 'POST', body: JSON.stringify({ title: 'Nuevo cuaderno' }) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    await openCuaderno(data.id);
+    await openCuaderno(data.id, true);
   } catch (e) {
     alert('Error creando cuaderno: ' + e.message);
   }
 }
 
-async function openCuaderno(id) {
+async function openCuaderno(id, editable = true) {
   resetDocenteState();
   currentCuadernoId = id;
+  currentCuadernoEditable = editable;
   hideAllPanels();
   byId('docente-panel').style.display = 'block';
+  byId('readonly-banner').style.display = editable ? 'none' : 'flex';
   showDocTab('temporalizacion');
+  setFormReadOnly(!editable);
   await loadCuadernoFromServer(id);
+}
+
+function setFormReadOnly(ro) {
+  const inputs = byId('docente-panel')?.querySelectorAll('input:not([type=hidden]), select, textarea, button:not([class*="doc-tab"]):not([onclick*="goHome"]):not([onclick*="showDocTab"])');
+  inputs?.forEach(el => {
+    if (el.id === 'cuaderno-title' || el.id === 'cuaderno-ciclo') { el.readOnly = ro; return; }
+    if (ro) el.setAttribute('disabled', ''); else el.removeAttribute('disabled');
+  });
+  const editors = byId('docente-panel')?.querySelectorAll('.seg-editor');
+  editors?.forEach(el => { el.contentEditable = ro ? 'false' : 'true'; });
+}
+
+async function duplicarCuaderno(id, title) {
+  if (!confirm(`¿Duplicar el cuaderno "${title || 'Mi Cuaderno'}"?`)) return;
+  try {
+    const res = await apiFetch('/api/cuaderno/' + id + '/duplicar', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    await openCuaderno(data.id, true);
+  } catch (e) {
+    alert('Error duplicando: ' + e.message);
+  }
 }
 
 async function deleteMiCuaderno(id, title) {
@@ -926,6 +1071,7 @@ async function deleteMiCuaderno(id, title) {
 function showDocTab(name) {
   document.querySelectorAll('.doc-tab').forEach(t => t.classList.toggle('active', t.dataset.doctab === name));
   document.querySelectorAll('.doc-tab-panel').forEach(p => { p.style.display = p.id === 'doctab-' + name ? 'block' : 'none'; });
+  if (name === 'seguimiento') renderSeguimiento();
 }
 
 async function loadAndShowDocente() {
@@ -963,11 +1109,11 @@ async function loadAdminUsers() {
       tr.innerHTML = `
         <td><strong>${esc(u.display_name || u.username)}</strong></td>
         <td><span class="muted">${esc(u.username)}</span></td>
-        <td><span class="badge badge-${u.role}">${u.role === 'admin' ? 'Admin' : 'Docente'}</span></td>
+        <td><span class="badge badge-${u.role}">${u.role === 'admin' ? 'Admin' : u.role === 'jefatura' ? 'Jefatura' : 'Docente'}</span></td>
         <td class="muted">${fmtDateTime(u.created_at)}</td>
         <td>
           ${u.role !== 'admin' ? `
-            <button class="btn ghost small" onclick="editUser(${u.id},'${esc(u.display_name||u.username)}')">✏️ Editar</button>
+            <button class="btn ghost small" onclick="editUser(${u.id},'${esc(u.display_name||u.username)}','${u.role}')">✏️ Editar</button>
             <button class="btn danger small" onclick="deleteUser(${u.id},'${esc(u.display_name||u.username)}')">🗑</button>
           ` : '<span class="muted">—</span>'}
         </td>
@@ -980,20 +1126,22 @@ async function loadAdminUsers() {
 }
 
 byId('btn-add-user').onclick = () => {
-  openModal('Nuevo docente', `
+  openModal('Nuevo usuario', `
     <div class="modal-field"><label>Nombre completo</label><input type="text" id="m-name" placeholder="Ana García" style="width:100%" /></div>
     <div class="modal-field"><label>Usuario (login)</label><input type="text" id="m-user" placeholder="ana.garcia" style="width:100%" /></div>
     <div class="modal-field"><label>Contraseña</label><input type="password" id="m-pass" style="width:100%" /></div>
+    <div class="modal-field"><label>Rol</label><select id="m-role" style="width:100%"><option value="docente">Docente</option><option value="jefatura">Jefatura</option></select></div>
     <div id="m-err" style="color:#dc2626;font-size:13px;margin-top:6px;min-height:18px"></div>
   `, [
     { text: 'Cancelar', cls: 'ghost', action: closeModal },
-    { text: 'Crear docente', cls: 'primary', action: async () => {
+    { text: 'Crear usuario', cls: 'primary', action: async () => {
       const display_name = byId('m-name')?.value.trim();
       const username = byId('m-user')?.value.trim();
       const password = byId('m-pass')?.value;
+      const role = byId('m-role')?.value || 'docente';
       if (!username || !password || !display_name) { byId('m-err').textContent = 'Rellena todos los campos.'; return; }
       try {
-        const res = await apiFetch('/api/users', { method: 'POST', body: JSON.stringify({ username, password, display_name }) });
+        const res = await apiFetch('/api/users', { method: 'POST', body: JSON.stringify({ username, password, display_name, role }) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         closeModal(); await loadAdminUsers();
@@ -1003,18 +1151,20 @@ byId('btn-add-user').onclick = () => {
   setTimeout(() => byId('m-name')?.focus(), 50);
 };
 
-function editUser(id, currentName) {
-  openModal('Editar docente', `
+function editUser(id, currentName, currentRole) {
+  openModal('Editar usuario', `
     <div class="modal-field"><label>Nombre completo</label><input type="text" id="m-name" value="${esc(currentName)}" style="width:100%" /></div>
     <div class="modal-field"><label>Nueva contraseña (dejar vacío = no cambiar)</label><input type="password" id="m-pass" placeholder="Nueva contraseña…" style="width:100%" /></div>
+    <div class="modal-field"><label>Rol</label><select id="m-role" style="width:100%"><option value="docente" ${currentRole==='docente'?'selected':''}>Docente</option><option value="jefatura" ${currentRole==='jefatura'?'selected':''}>Jefatura</option></select></div>
     <div id="m-err" style="color:#dc2626;font-size:13px;margin-top:6px;min-height:18px"></div>
   `, [
     { text: 'Cancelar', cls: 'ghost', action: closeModal },
     { text: 'Guardar', cls: 'primary', action: async () => {
       const display_name = byId('m-name')?.value.trim();
       const password = byId('m-pass')?.value;
+      const role = byId('m-role')?.value;
       try {
-        const res = await apiFetch('/api/users/'+id, { method: 'PUT', body: JSON.stringify({ display_name, password: password||undefined }) });
+        const res = await apiFetch('/api/users/'+id, { method: 'PUT', body: JSON.stringify({ display_name, password: password||undefined, role }) });
         if (!res.ok) throw new Error((await res.json()).error);
         closeModal(); await loadAdminUsers();
       } catch (e) { byId('m-err').textContent = e.message; }
@@ -1132,6 +1282,7 @@ function renderAdminCuaderno(data) {
 let isLoading = false;
 let saveTimer = null;
 let currentCuadernoId = null;
+let seguimientoData = {};
 const festivos = new Map(), feoes = new Map(), evaluaciones = new Map();
 const modulos = [], RAs = [];
 let planMap = new Map(), lastAsignaciones = [], ceTempList = [], pendingImport = [];
@@ -1140,10 +1291,16 @@ let calendarRows = [];
 
 function resetDocenteState() {
   currentCuadernoId = null;
+  seguimientoData = {};
   festivos.clear(); feoes.clear(); evaluaciones.clear();
   modulos.splice(0); RAs.splice(0); planMap = new Map();
   lastAsignaciones = []; ceTempList = []; calendarRows = [];
   planSesiones = []; planSesCounts = []; planLocked = [];
+  if (byId('cuaderno-title')) byId('cuaderno-title').value = '';
+  if (byId('cuaderno-ciclo')) byId('cuaderno-ciclo').value = '';
+  if (byId('salida')) byId('salida').style.display = 'none';
+  if (byId('salidaPlan')) byId('salidaPlan').style.display = 'none';
+  if (byId('seguimientoContent')) byId('seguimientoContent').innerHTML = '';
 }
 
 function getState() {
@@ -1209,10 +1366,12 @@ async function doSave() {
   try {
     setSaveStatus('saving');
     const state = getState();
+    if (!currentCuadernoEditable) { setSaveStatus('ok'); return; }
     const endpoint = currentCuadernoId ? '/api/cuaderno/' + currentCuadernoId : '/api/cuaderno';
+    const ciclo = byId('cuaderno-ciclo')?.value || '';
     const res = await apiFetch(endpoint, {
       method: 'PUT',
-      body: JSON.stringify({ title: state.title, state_json: state, calendar_json: calendarRows })
+      body: JSON.stringify({ title: state.title, ciclo, state_json: state, calendar_json: calendarRows, seguimiento_json: seguimientoData })
     });
     if (!res.ok) throw new Error();
     setSaveStatus('ok');
@@ -1230,7 +1389,12 @@ async function loadCuadernoFromServer(id) {
     const data = await res.json();
     if (data.id) currentCuadernoId = data.id;
     if (data.title && byId('cuaderno-title')) byId('cuaderno-title').value = data.title;
+    if (byId('cuaderno-ciclo')) byId('cuaderno-ciclo').value = data.ciclo || '';
     restoreState(data.state_json);
+    // Restore seguimiento from server
+    if (data.seguimiento_json && typeof data.seguimiento_json === 'object') {
+      seguimientoData = { ...data.seguimiento_json };
+    }
     if (Array.isArray(data.calendar_json) && data.calendar_json.length) {
       calendarRows = data.calendar_json;
       renderCalendarFromRows(calendarRows);
@@ -1240,10 +1404,12 @@ async function loadCuadernoFromServer(id) {
   } catch {}
 }
 
-// Watch title changes
+// Watch title and ciclo changes
 document.addEventListener('DOMContentLoaded', () => {
   const titleEl = byId('cuaderno-title');
   if (titleEl) titleEl.addEventListener('input', scheduleAutoSave);
+  const cicloEl = byId('cuaderno-ciclo');
+  if (cicloEl) cicloEl.addEventListener('input', scheduleAutoSave);
 });
 
 // Watch date changes
@@ -1843,6 +2009,7 @@ function renderCalendarFromRows(rows) {
 
   byId('salida').style.display = rows.length ? 'block' : 'none';
   if (byId('calendario-empty-state')) byId('calendario-empty-state').style.display = rows.length ? 'none' : 'block';
+  updateCalFilterDropdowns();
 }
 
 // === PLANNING ===
@@ -2090,6 +2257,103 @@ byId('planificar').onclick = () => {
   showDocTab('planificacion');
   scheduleAutoSave();
 };
+
+// === CALENDAR FILTER ===
+function applyCalFilter() {
+  const tipo   = byId('filter-tipo')?.value   || '';
+  const modulo = byId('filter-modulo')?.value || '';
+  const ra     = byId('filter-ra')?.value     || '';
+  const obs    = (byId('filter-obs')?.value   || '').toLowerCase();
+  const rows   = byId('tabla-tbody')?.querySelectorAll('tr');
+  let visible  = 0;
+  rows?.forEach((tr, idx) => {
+    const r = calendarRows[idx];
+    if (!r) return;
+    const show =
+      (!tipo   || r.tipo   === tipo) &&
+      (!modulo || r.modulo === modulo) &&
+      (!ra     || r.raNum  === ra) &&
+      (!obs    || (r.obs||'').toLowerCase().includes(obs) || (r.modulo||'').toLowerCase().includes(obs));
+    tr.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const total = rows?.length || 0;
+  if (byId('filter-count')) byId('filter-count').textContent = visible < total ? `${visible} / ${total} filas` : '';
+}
+
+function clearCalFilter() {
+  ['filter-tipo','filter-modulo','filter-ra','filter-obs'].forEach(id => {
+    const el = byId(id); if (el) el.value = '';
+  });
+  applyCalFilter();
+}
+
+function updateCalFilterDropdowns() {
+  const moduloSel = byId('filter-modulo');
+  const raSel     = byId('filter-ra');
+  if (!moduloSel || !raSel) return;
+  const mods = [...new Set(calendarRows.map(r => r.modulo).filter(Boolean))].sort();
+  const ras  = [...new Set(calendarRows.map(r => r.raNum).filter(Boolean))].sort();
+  moduloSel.innerHTML = '<option value="">Todos los módulos</option>' + mods.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+  raSel.innerHTML     = '<option value="">Todos los RAs</option>'     + ras.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+}
+
+// === SEGUIMIENTO ===
+const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function getMonthRange(ini, fin) {
+  const months = [];
+  const dI = new Date(ini + 'T00:00:00'), dF = new Date(fin + 'T00:00:00');
+  let y = dI.getFullYear(), m = dI.getMonth();
+  while (y < dF.getFullYear() || (y === dF.getFullYear() && m <= dF.getMonth())) {
+    months.push({ year: y, month: m, label: MESES_ES[m] + ' ' + y });
+    m++; if (m > 11) { m = 0; y++; }
+  }
+  return months;
+}
+
+function renderSeguimiento() {
+  const container = byId('seguimientoContent');
+  if (!container) return;
+  container.innerHTML = '';
+  const ini = byId('inicio')?.value, fin = byId('fin')?.value;
+  if (!ini || !fin || !modulos.length) {
+    container.innerHTML = '<div class="tab-empty"><div class="tab-empty-icon">📋</div><p style="font-size:15px;font-weight:600;margin:0 0 8px">Sin datos suficientes</p><p style="font-size:13px">Define las fechas del curso y los módulos en la pestaña <strong>Temporalización</strong>.</p><button class="btn primary" style="margin-top:16px" onclick="showDocTab(\'temporalizacion\')">← Ir a Temporalización</button></div>';
+    return;
+  }
+  const months = getMonthRange(ini, fin);
+  months.forEach(({ year, month, label }) => {
+    const monthHeader = document.createElement('div');
+    monthHeader.className = 'seg-month-header';
+    monthHeader.textContent = '📅 ' + label;
+    container.appendChild(monthHeader);
+    modulos.forEach(m => {
+      const key = `${m.nombre}_${year}-${String(month+1).padStart(2,'0')}`;
+      const card = document.createElement('div');
+      card.className = 'seg-card';
+      const ro = !currentCuadernoEditable;
+      card.innerHTML = `
+        <div class="seg-title">📋 Seguimiento Programación — ${esc(m.nombre)} — ${esc(label)}</div>
+        ${ro ? '' : `<div class="seg-toolbar">
+          <button onmousedown="event.preventDefault();document.execCommand('bold')"><b>N</b></button>
+          <button onmousedown="event.preventDefault();document.execCommand('italic')"><i>C</i></button>
+          <button onmousedown="event.preventDefault();document.execCommand('underline')"><u>S</u></button>
+          <button onmousedown="event.preventDefault();document.execCommand('insertUnorderedList')">• Lista</button>
+          <button onmousedown="event.preventDefault();document.execCommand('insertOrderedList')">1. Lista num.</button>
+        </div>`}
+        <div class="seg-editor" contenteditable="${ro ? 'false' : 'true'}" data-key="${esc(key)}">${seguimientoData[key] || ''}</div>
+      `;
+      if (!ro) {
+        const editor = card.querySelector('.seg-editor');
+        editor.addEventListener('input', () => {
+          seguimientoData[key] = editor.innerHTML;
+          scheduleAutoSave();
+        });
+      }
+      container.appendChild(card);
+    });
+  });
+}
 
 // === EXPORT ===
 function dlBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},100);}
