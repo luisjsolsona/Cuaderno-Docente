@@ -1379,7 +1379,10 @@ function getState() {
     modulos: [...modulos],
     RAs: [...RAs],
     planMap: Array.from(planMap.entries()),
-    lastAsignaciones: lastAsignaciones
+    lastAsignaciones: lastAsignaciones,
+    planSesiones: planSesiones,
+    planSesCounts: planSesCounts,
+    planLocked: planLocked
   };
 }
 
@@ -1401,6 +1404,9 @@ function restoreState(s) {
   if (Array.isArray(s.RAs)) s.RAs.forEach(ra => RAs.push(ra));
   planMap = new Map(Array.isArray(s.planMap) ? s.planMap : []);
   lastAsignaciones = Array.isArray(s.lastAsignaciones) ? s.lastAsignaciones : [];
+  planSesiones   = Array.isArray(s.planSesiones)  ? s.planSesiones  : [];
+  planSesCounts  = Array.isArray(s.planSesCounts) ? s.planSesCounts : [];
+  planLocked     = Array.isArray(s.planLocked)    ? s.planLocked    : [];
   renderFestivos(); renderFeoes(); renderEvals(); renderModulos(); renderRAs();
   isLoading = false;
 }
@@ -1459,6 +1465,14 @@ async function loadCuadernoFromServer(id) {
     // Restore seguimiento from server
     if (data.seguimiento_json && typeof data.seguimiento_json === 'object') {
       seguimientoData = { ...data.seguimiento_json };
+    }
+    // Restore plan display if there were asignaciones saved
+    if (lastAsignaciones.length > 0 && planSesiones.length > 0) {
+      const planContent = byId('planContent');
+      if (planContent) planContent.innerHTML = '';
+      _renderPlanCards(lastAsignaciones);
+      byId('salidaPlan').style.display = 'block';
+      byId('plan-empty-state').style.display = 'none';
     }
     if (Array.isArray(data.calendar_json) && data.calendar_json.length) {
       calendarRows = data.calendar_json;
