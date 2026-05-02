@@ -649,6 +649,13 @@
       <h2>📥 Importar RAs desde CATEDU</h2>
       <button class="import-close" onclick="closeImportModal()">✕</button>
     </div>
+    <div style="background:#fffbeb;border-bottom:1px solid #fcd34d;padding:10px 20px;font-size:12px;color:#92400e;display:flex;align-items:flex-start;gap:8px">
+      <span style="flex-shrink:0;font-size:15px">⚡</span>
+      <span>Para una carga más rápida y fiable, se recomienda instalar la extensión
+        <a href="https://chromewebstore.google.com/detail/allow-cors-access-control/lhobafahddgcelffkeicbaginigeejlf?hl=es&pli=1" target="_blank" rel="noopener" style="color:#d97706;font-weight:700;text-decoration:underline">Allow CORS: Access-Control-Allow-Origin</a>
+        en Chrome y activarla antes de importar.
+      </span>
+    </div>
     <div class="import-body">
       <!-- Breadcrumb / pasos -->
       <div class="import-steps">
@@ -1194,25 +1201,83 @@ async function loadAdminCuadernos() {
     const list = await res.json();
     if (!list.length) { container.innerHTML = '<p class="empty-state">No hay cuadernos creados todavía.</p>'; return; }
     container.innerHTML = '';
-    list.forEach(c => {
-      const div = document.createElement('div');
-      div.className = 'cuaderno-card';
-      div.innerHTML = `
-        <div style="width:40px;height:40px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📋</div>
-        <div class="cuaderno-info">
-          <div class="cuaderno-name">${esc(c.display_name || c.username)}</div>
-          <div class="cuaderno-meta">
-            ${esc(c.title || 'Mi Cuaderno')} ·
-            ${c.has_data ? '<span style="color:#059669">Con datos</span>' : '<span style="color:#94a3b8">Sin datos</span>'} ·
-            Actualizado: ${fmtDateTime(c.updated_at)}
+
+    // Group by ciclo
+    const byCiclo = {};
+    list.forEach(c => { const g = c.ciclo || '—'; if (!byCiclo[g]) byCiclo[g] = []; byCiclo[g].push(c); });
+    const ciclos = Object.keys(byCiclo).sort((a,b) => a === '—' ? 1 : b === '—' ? -1 : a.localeCompare(b));
+
+    ciclos.forEach(ciclo => {
+      // Ciclo header
+      const header = document.createElement('div');
+      header.style.cssText = 'font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;background:#eff6ff;border-radius:7px;margin:14px 0 8px';
+      header.textContent = ciclo === '—' ? 'Sin ciclo asignado' : '📚 ' + ciclo;
+      container.appendChild(header);
+
+      byCiclo[ciclo].forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'cuaderno-card';
+        const badges = [];
+        if (c.has_state)    badges.push('<span class="badge badge-clase" style="font-size:10px">Datos</span>');
+        if (c.has_calendar) badges.push('<span class="badge badge-eval" style="font-size:10px">Calendario</span>');
+        div.innerHTML = `
+          <div style="width:38px;height:38px;border-radius:9px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📋</div>
+          <div class="cuaderno-info" style="flex:1;min-width:0">
+            <div class="cuaderno-name">${esc(c.title || 'Mi Cuaderno')}</div>
+            <div class="cuaderno-meta">
+              👤 ${esc(c.display_name || c.username)}
+              ${badges.length ? ' · ' + badges.join(' ') : ''}
+              · Actualizado: ${fmtDateTime(c.updated_at)}
+            </div>
           </div>
-        </div>
-        <button class="btn ghost small" onclick="viewAdminCuaderno(${c.id},'${esc(c.display_name||c.username)}')">👁 Ver</button>
-      `;
-      container.appendChild(div);
+          <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+            <button class="btn ghost small" onclick="viewAdminCuaderno(${c.id},'${esc(c.display_name||c.username)}')">👁 Ver</button>
+            <button class="btn ghost small" onclick="editAdminCuaderno(${c.id},'${esc(c.display_name||c.username)}')">✏️ Editar</button>
+            <button class="btn ghost small" onclick="duplicarAdminCuaderno(${c.id},'${esc(c.title||'Mi Cuaderno')}')">📋 Duplicar</button>
+            <button class="btn ghost small" style="color:var(--danger);border-color:var(--danger)" onclick="deleteAdminCuaderno(${c.id},'${esc(c.title||'Mi Cuaderno')}','${esc(c.display_name||c.username)}')">🗑 Borrar</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
     });
   } catch {
     container.innerHTML = '<p class="empty-state">Error cargando cuadernos.</p>';
+  }
+}
+
+async function editAdminCuaderno(id, ownerName) {
+  resetDocenteState();
+  currentCuadernoId = id;
+  currentCuadernoEditable = true;
+  hideAllPanels();
+  byId('docente-panel').style.display = 'block';
+  byId('readonly-banner').style.display = 'none';
+  showDocTab('temporalizacion');
+  setFormReadOnly(false);
+  await loadCuadernoFromServer(id);
+}
+
+async function duplicarAdminCuaderno(id, title) {
+  if (!confirm(`¿Duplicar el cuaderno "${title}"? Se creará una copia en tu propio usuario.`)) return;
+  try {
+    const res = await apiFetch('/api/cuaderno/' + id + '/duplicar', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    alert(`✅ Cuaderno duplicado como "${data.title}"`);
+    loadAdminCuadernos();
+  } catch (e) {
+    alert('Error duplicando: ' + e.message);
+  }
+}
+
+async function deleteAdminCuaderno(id, title, ownerName) {
+  if (!confirm(`¿Eliminar el cuaderno "${title}" de ${ownerName}? Esta acción no se puede deshacer.`)) return;
+  try {
+    const res = await apiFetch('/api/cuaderno/' + id, { method: 'DELETE' });
+    if (!res.ok) throw new Error((await res.json()).error);
+    loadAdminCuadernos();
+  } catch (e) {
+    alert('Error eliminando: ' + e.message);
   }
 }
 
