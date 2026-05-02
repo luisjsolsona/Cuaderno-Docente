@@ -316,6 +316,41 @@ app.delete('/api/cuaderno/:id', auth, (req, res) => {
   res.json({ ok: true });
 });
 
+// Actualizar solo el seguimiento de un cuaderno (admin/jefatura o propietario)
+app.patch('/api/cuaderno/:id/seguimiento', auth, (req, res) => {
+  const c = db.prepare("SELECT user_id FROM cuadernos WHERE id = ?").get(req.params.id);
+  if (!c) return res.status(404).json({ error: 'No encontrado' });
+  if (c.user_id !== req.user.id && !isPrivileged(req.user)) return res.status(403).json({ error: 'Sin permiso' });
+  const { seguimiento_json } = req.body || {};
+  db.prepare("UPDATE cuadernos SET seguimiento_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    .run(JSON.stringify(seguimiento_json || {}), req.params.id);
+  res.json({ ok: true });
+});
+
+// Lista de ciclos distintos (admin/jefatura)
+app.get('/api/ciclos', auth, adminOnly, (req, res) => {
+  const rows = db.prepare("SELECT DISTINCT ciclo FROM cuadernos WHERE ciclo != '' ORDER BY ciclo").all();
+  res.json(rows.map(r => r.ciclo));
+});
+
+// Cuadernos con seguimiento de un ciclo (admin/jefatura)
+app.get('/api/seguimientos', auth, adminOnly, (req, res) => {
+  const ciclo = String(req.query.ciclo || '');
+  const list = db.prepare(`
+    SELECT c.id, c.title, c.ciclo, c.seguimiento_json, c.state_json,
+           u.display_name, u.username
+    FROM cuadernos c JOIN users u ON c.user_id = u.id
+    WHERE c.ciclo = ?
+    ORDER BY u.display_name, c.title
+  `).all(ciclo);
+  res.json(list.map(c => {
+    let seg = {}, st = {};
+    try { seg = JSON.parse(c.seguimiento_json || '{}'); } catch {}
+    try { st  = JSON.parse(c.state_json       || '{}'); } catch {}
+    return { ...c, seguimiento_json: seg, state_json: st };
+  }));
+});
+
 // === ADMIN/JEFATURA: all cuadernos ===
 app.get('/api/cuadernos', auth, adminOnly, (req, res) => {
   res.json(db.prepare(`

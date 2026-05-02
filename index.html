@@ -383,6 +383,7 @@
       <div class="admin-tabs">
         <button class="admin-tab active" data-tab="users">👥 Docentes</button>
         <button class="admin-tab" data-tab="cuadernos">📋 Cuadernos</button>
+        <button class="admin-tab" data-tab="seguimientos">📋 Seguimientos</button>
       </div>
 
       <!-- Users tab -->
@@ -411,6 +412,20 @@
           <h2>Cuadernos de los docentes</h2>
           <div id="cuadernos-list"><p class="empty-state">Cargando...</p></div>
         </div>
+      </div>
+
+      <!-- Seguimientos tab -->
+      <div id="tab-seguimientos" style="display:none">
+        <div class="card" style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <h2 style="margin:0">📋 Seguimientos por ciclo</h2>
+            <select id="admin-ciclo-sel" style="flex:1;max-width:340px" onchange="loadAdminSeguimientos()">
+              <option value="">— Selecciona un ciclo —</option>
+            </select>
+            <button class="btn ghost small" onclick="loadAdminSeguimientos()">🔄 Actualizar</button>
+          </div>
+        </div>
+        <div id="admin-seguimientos-content"></div>
       </div>
     </div>
 
@@ -1098,6 +1113,7 @@ adminTabs.forEach(tab => {
     document.querySelectorAll('[id^="tab-"]').forEach(p => p.style.display = 'none');
     byId('tab-' + tab.dataset.tab).style.display = 'block';
     if (tab.dataset.tab === 'cuadernos') loadAdminCuadernos();
+    if (tab.dataset.tab === 'seguimientos') loadAdminCiclos();
   };
 });
 
@@ -1304,25 +1320,113 @@ byId('btn-back-cuadernos').onclick = () => {
 };
 
 function renderAdminCuaderno(data) {
-  const s = data.state_json || {};
+  const s   = data.state_json    || {};
   const rows = data.calendar_json || [];
-  let html = `<div class="card" style="margin-bottom:12px">
-    <h2>${esc(data.title || 'Mi Cuaderno')}</h2>
-    <div class="grid cols-2">`;
+  const seg  = data.seguimiento_json || {};
+  const plan = Array.isArray(s.lastAsignaciones) ? s.lastAsignaciones : [];
+  let html = '';
 
-  if (s.inicio && s.fin) html += `<div><label>Curso</label><strong>${s.inicio} → ${s.fin}</strong></div>`;
-  if (s.modulos?.length) {
-    html += `<div><label>Módulos (${s.modulos.length})</label>${s.modulos.map(m=>`<div class="chip" style="margin:2px">${esc(m.nombre)} · ${DIAS[m.dow]} · ${m.inicio}–${m.fin}</div>`).join('')}</div>`;
-  }
-  if (s.RAs?.length) {
-    html += `<div><label>RAs definidos (${s.RAs.length})</label>${s.RAs.map(ra=>`<span class="chip">${esc(ra.num)}</span>`).join('')}</div>`;
-  }
+  // ── Resumen ──────────────────────────────────────────────────────────────
+  html += `<div class="card" style="margin-bottom:12px">
+    <h2 style="margin:0 0 10px">${esc(data.title || 'Mi Cuaderno')}</h2>
+    <div class="grid cols-2" style="font-size:13px">`;
+  if (s.inicio && s.fin)
+    html += `<div><label>Curso</label><strong>${s.inicio} → ${s.fin}</strong></div>`;
+  if (data.ciclo)
+    html += `<div><label>Ciclo formativo</label><strong>${esc(data.ciclo)}</strong></div>`;
   html += `</div></div>`;
 
+  // ── Módulos ───────────────────────────────────────────────────────────────
+  if (s.modulos?.length) {
+    html += `<div class="card" style="margin-bottom:12px">
+      <h2>📘 Módulos (${s.modulos.length})</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:var(--bg)">
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">Módulo</th>
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">Día</th>
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">Inicio</th>
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">Fin</th>
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">Horas/sem.</th>
+        </tr></thead><tbody>`;
+    s.modulos.forEach(m => {
+      const h = ((parseHM(m.fin) - parseHM(m.inicio)) / 60).toFixed(1);
+      html += `<tr><td style="padding:7px 10px;border-bottom:1px solid #f1f5f9">${esc(m.nombre)}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9">${DIAS[m.dow]}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9">${m.inicio}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9">${m.fin}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9">${h}h</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  // ── RAs y CEs ────────────────────────────────────────────────────────────
+  if (s.RAs?.length) {
+    html += `<div class="card" style="margin-bottom:12px"><h2>🎯 Resultados de Aprendizaje y Criterios de Evaluación (${s.RAs.length} RAs)</h2>`;
+    s.RAs.forEach((ra, idx) => {
+      const col = RA_COLORS[idx % 8];
+      html += `<div style="background:${col.bg};border:1px solid ${col.border};border-radius:10px;padding:12px;margin-bottom:8px">
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
+          <span style="background:${col.badge};color:#fff;font-weight:800;border-radius:6px;padding:3px 10px;font-size:12px;white-space:nowrap">${esc(ra.num)}</span>
+          <span style="font-size:13px;font-weight:600;color:${col.text}">${esc(ra.contenido)}</span>
+        </div>`;
+      if (ra.ces?.length) {
+        html += `<div style="display:flex;flex-direction:column;gap:4px">`;
+        ra.ces.forEach(ce => {
+          html += `<div style="display:flex;gap:8px;background:#fff8;border:1px solid ${col.border};border-radius:6px;padding:5px 9px;font-size:12px">
+            <span style="font-weight:700;color:${col.text};white-space:nowrap">${esc(ce.num)}</span>
+            <span style="color:var(--ink)">${esc(ce.desc)}</span>
+          </div>`;
+        });
+        html += `</div>`;
+      } else {
+        html += `<p style="font-size:12px;color:var(--muted);margin:4px 0 0;font-style:italic">Sin CEs definidos.</p>`;
+      }
+      html += `</div>`;
+    });
+    html += `</div>`;
+  }
+
+  // ── Planificación ────────────────────────────────────────────────────────
+  if (plan.length) {
+    const totalSes = plan.reduce((a,p) => a + (p.sesiones?.length||0), 0);
+    const totalH   = plan.reduce((a,p) => a + (p.horas||0), 0);
+    html += `<div class="card" style="margin-bottom:12px">
+      <h2>🧠 Planificación por RAs — ${totalSes} sesiones · ${totalH.toFixed(1)}h</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:var(--bg)">
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">RA</th>
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">Contenido</th>
+          <th style="padding:7px 10px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted)">Sesiones</th>
+          <th style="padding:7px 10px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted)">Horas</th>
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">Desde</th>
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">Hasta</th>
+        </tr></thead><tbody>`;
+    plan.forEach((p, idx) => {
+      const col  = RA_COLORS[idx % 8];
+      const ses  = p.sesiones || [];
+      const desde = ses[0]?.fecha || '—';
+      const hasta = ses[ses.length-1]?.fecha || '—';
+      html += `<tr>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9">
+          <span style="background:${col.badge};color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">${esc(p.ra?.num||'')}</span>
+        </td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:12px">${esc((p.ra?.contenido||'').slice(0,80))}${(p.ra?.contenido||'').length>80?'…':''}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:700">${ses.length}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:center">${(p.horas||0).toFixed(1)}h</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:12px;color:var(--muted)">${desde}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:12px;color:var(--muted)">${hasta}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  // ── Calendario ───────────────────────────────────────────────────────────
   if (rows.length) {
-    html += `<div class="card"><h2>Calendario</h2><div class="table-wrap"><table>
-      <thead><tr><th>Fecha</th><th>Día</th><th>Tipo</th><th>Módulo</th><th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>RA</th></tr></thead>
-      <tbody>`;
+    html += `<div class="card" style="margin-bottom:12px"><h2>📆 Calendario (${rows.length} filas)</h2><div class="table-wrap" style="max-height:50vh"><table>
+      <thead><tr>
+        <th>Fecha</th><th>Día</th><th>Tipo</th><th>Módulo</th>
+        <th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>RA</th>
+      </tr></thead><tbody>`;
     rows.forEach(r => {
       let badge = '';
       if (r.tipo==='festivo') badge='<span class="badge badge-festivo">Festivo</span>';
@@ -1335,12 +1439,150 @@ function renderAdminCuaderno(data) {
         <td>${esc(r.obs||'')}</td><td>${esc(r.raNum||'')}</td>
       </tr>`;
     });
-    html += '</tbody></table></div></div>';
+    html += `</tbody></table></div></div>`;
   } else {
-    html += '<div class="card"><p class="empty-state">Este docente aún no ha generado el calendario.</p></div>';
+    html += `<div class="card" style="margin-bottom:12px"><p class="empty-state">Este docente aún no ha generado el calendario.</p></div>`;
+  }
+
+  // ── Seguimiento ──────────────────────────────────────────────────────────
+  const segKeys = Object.keys(seg).sort();
+  if (segKeys.length) {
+    html += `<div class="card"><h2>📋 Seguimiento de la programación</h2>`;
+    segKeys.forEach(k => {
+      if (!seg[k] || seg[k] === '<br>' || seg[k].trim() === '') return;
+      const [modName, yearMonth] = k.split('_');
+      const [y, m] = (yearMonth||'').split('-');
+      const label = (m && y) ? `${MESES_ES[parseInt(m)-1]} ${y}` : yearMonth||'';
+      html += `<div style="margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px">${esc(modName)} — ${esc(label)}</div>
+        <div style="font-size:13px;line-height:1.6;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">${seg[k]}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div class="card"><p class="empty-state">Este docente aún no tiene entradas de seguimiento.</p></div>`;
   }
 
   byId('admin-cuaderno-content').innerHTML = html;
+}
+
+// ── Pestaña Seguimientos (admin) ─────────────────────────────────────────────
+async function loadAdminCiclos() {
+  const sel = byId('admin-ciclo-sel');
+  if (!sel) return;
+  try {
+    const res = await apiFetch('/api/ciclos');
+    const ciclos = await res.json();
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">— Selecciona un ciclo —</option>' +
+      ciclos.map(c => `<option value="${esc(c)}" ${c===prev?'selected':''}>${esc(c)}</option>`).join('');
+    if (prev && ciclos.includes(prev)) loadAdminSeguimientos();
+    else if (ciclos.length === 1) { sel.value = ciclos[0]; loadAdminSeguimientos(); }
+  } catch {}
+}
+
+async function loadAdminSeguimientos() {
+  const ciclo = byId('admin-ciclo-sel')?.value || '';
+  const container = byId('admin-seguimientos-content');
+  if (!container) return;
+  if (!ciclo) { container.innerHTML = '<p class="empty-state">Selecciona un ciclo para ver los seguimientos.</p>'; return; }
+  container.innerHTML = '<p class="empty-state">Cargando...</p>';
+  try {
+    const res = await apiFetch('/api/seguimientos?ciclo=' + encodeURIComponent(ciclo));
+    const list = await res.json();
+    if (!list.length) { container.innerHTML = '<p class="empty-state">No hay cuadernos en este ciclo todavía.</p>'; return; }
+    container.innerHTML = '';
+    list.forEach(c => renderAdminSeguimientoCard(c, container));
+  } catch {
+    container.innerHTML = '<p class="empty-state">Error cargando seguimientos.</p>';
+  }
+}
+
+function renderAdminSeguimientoCard(c, container) {
+  const s    = c.state_json    || {};
+  const seg  = c.seguimiento_json || {};
+  const modList = s.modulos || [];
+  const ini  = s.inicio, fin = s.fin;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'card';
+  wrap.style.marginBottom = '16px';
+
+  // Header
+  const head = document.createElement('div');
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px';
+  head.innerHTML = `
+    <div>
+      <div style="font-size:15px;font-weight:700">${esc(c.title||'Mi Cuaderno')}</div>
+      <div style="font-size:12px;color:var(--muted)">👤 ${esc(c.display_name||c.username)}${ini&&fin?' · '+ini+' → '+fin:''}</div>
+    </div>
+    <button class="btn primary small" onclick="saveAdminSeguimiento(${c.id}, this)">💾 Guardar</button>
+  `;
+  wrap.appendChild(head);
+
+  // If no dates or modules, show a message
+  if (!ini || !fin || !modList.length) {
+    const msg = document.createElement('p');
+    msg.className = 'empty-state';
+    msg.textContent = 'El docente aún no ha definido fechas o módulos.';
+    wrap.appendChild(msg);
+    container.appendChild(wrap);
+    return;
+  }
+
+  const months = typeof getMonthRange === 'function' ? getMonthRange(ini, fin) : [];
+
+  months.forEach(({ year, month, label }) => {
+    const mHead = document.createElement('div');
+    mHead.className = 'seg-month-header';
+    mHead.style.fontSize = '13px';
+    mHead.textContent = '📅 ' + label;
+    wrap.appendChild(mHead);
+
+    modList.forEach(m => {
+      const key = `${m.nombre}_${year}-${String(month+1).padStart(2,'0')}`;
+      const card = document.createElement('div');
+      card.className = 'seg-card';
+      card.style.marginBottom = '8px';
+      card.innerHTML = `
+        <div class="seg-title" style="font-size:13px">📋 ${esc(m.nombre)} — ${esc(label)}</div>
+        <div class="seg-toolbar">
+          <button onmousedown="event.preventDefault();document.execCommand('bold')"><b>N</b></button>
+          <button onmousedown="event.preventDefault();document.execCommand('italic')"><i>C</i></button>
+          <button onmousedown="event.preventDefault();document.execCommand('underline')"><u>S</u></button>
+          <button onmousedown="event.preventDefault();document.execCommand('insertUnorderedList')">• Lista</button>
+          <button onmousedown="event.preventDefault();document.execCommand('insertOrderedList')">1. Lista num.</button>
+        </div>
+        <div class="seg-editor" contenteditable="true" data-cuaderno="${c.id}" data-key="${esc(key)}">${seg[key]||''}</div>
+      `;
+      wrap.appendChild(card);
+    });
+  });
+
+  wrap.dataset.cuadernoId = c.id;
+  container.appendChild(wrap);
+}
+
+async function saveAdminSeguimiento(cuadernoId, btn) {
+  const wrap = btn.closest('[data-cuaderno-id]');
+  if (!wrap) return;
+  const editors = wrap.querySelectorAll('.seg-editor[data-cuaderno]');
+  const seguimiento_json = {};
+  editors.forEach(el => { seguimiento_json[el.dataset.key] = el.innerHTML; });
+  const prev = btn.textContent;
+  btn.disabled = true; btn.textContent = '⟳ Guardando…';
+  try {
+    const res = await apiFetch('/api/cuaderno/' + cuadernoId + '/seguimiento', {
+      method: 'PATCH',
+      body: JSON.stringify({ seguimiento_json })
+    });
+    if (!res.ok) throw new Error();
+    btn.textContent = '✓ Guardado';
+    setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 2000);
+  } catch {
+    btn.textContent = '✕ Error';
+    setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 2000);
+  }
 }
 
 // === STATE (DOCENTE) ===
