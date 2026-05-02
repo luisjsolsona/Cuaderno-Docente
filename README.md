@@ -1,14 +1,16 @@
 # Cuaderno Docente
 
-Aplicación web para crear y gestionar **cuadernos docentes interactivos**. Cada docente tiene su propio cuaderno con calendario de sesiones, módulos, festivos, FEOE, evaluaciones y Resultados de Aprendizaje. Los datos se guardan automáticamente en el servidor.
+Aplicación web para crear y gestionar **cuadernos docentes interactivos**. Cada docente puede tener múltiples cuadernos, cada uno con calendario de sesiones, módulos, festivos, FEOE, evaluaciones y Resultados de Aprendizaje. Los datos se guardan automáticamente en el servidor.
 
 ---
 
 ## Características generales
 
+- **Gestión de múltiples cuadernos** por docente con pantalla de inicio propia
+- Navegación por pestañas dentro de cada cuaderno: **Temporalización**, **Planificación**, **Calendario**
 - Generador de calendarios docentes con módulos, festivos, FEOE y evaluaciones
 - Importación guiada de RAs y CEs desde CATEDU mediante asistente por pasos (Familia → Ciclo → Módulo)
-- Planificación automática ponderada de sesiones por RA
+- Planificación automática ponderada de sesiones por RA (se abre en su propia pestaña)
 - Exportación a `.xlsx` (multihojas) y `.csv`
 - Guardado automático en sesión (sin perder datos al recargar)
 - Edición online del calendario generado (observaciones y RA planificado)
@@ -33,12 +35,25 @@ Aplicación web para crear y gestionar **cuadernos docentes interactivos**. Cada
 ### Administrador
 - Gestiona docentes (crear, editar, eliminar)
 - Visualiza el cuaderno de cualquier docente (solo lectura)
-- Tiene acceso a su propio cuaderno
+- Tiene acceso a su propio cuaderno desde el encabezado
 
 ### Docente
-- Crea y edita su propio cuaderno docente
-- Genera el calendario de sesiones
+- Ve todos sus cuadernos en la pantalla de inicio al hacer login
+- Crea, abre y elimina cuadernos desde la pantalla de inicio
+- Dentro de cada cuaderno, navega entre 3 pestañas:
+  - **Temporalización** — Configuración del curso (fechas, festivos, FEOE, evaluaciones, módulos, RAs)
+  - **Planificación** — Distribución de sesiones por RA (se genera desde Temporalización)
+  - **Calendario** — Calendario completo de sesiones (se genera desde Temporalización)
 - Exporta a Excel / CSV
+
+---
+
+## Navegación
+
+- **Logo / cabecera** → Vuelve a la pantalla de inicio (lista de cuadernos)
+- **← Cuadernos** → Botón dentro de cada cuaderno para volver a la lista
+- **🧠 Proponer planificación por RAs** → Genera la planificación y abre la pestaña Planificación
+- **⚡ Generar Calendario** → Genera el calendario y abre la pestaña Calendario
 
 ---
 
@@ -72,15 +87,16 @@ La aplicación queda disponible en `http://localhost:9000`
 
 ## Uso del cuaderno docente
 
-1. **Fechas del curso** — Indica inicio y fin del año académico
-2. **Festivos** — Añade días o rangos de días festivos con motivo opcional
-3. **FEOE** — Marca periodos de Formación en Empresa u Organismo Equiparado
-4. **Evaluaciones** — Añade fechas de evaluación (opcionalmente bloqueantes)
-5. **Módulos** — Define cada módulo con el día de la semana y horario
-6. **RAs y CEs** — Pulsa **🔍 Buscar módulo en CATEDU** para importar mediante asistente (selecciona Familia → Ciclo → Módulo → carga los RAs), o añade manualmente
-7. Pulsa **⚡ Generar calendario** — El resultado se muestra y guarda en el servidor
-8. Edita **Observaciones** y **RA Planificado** directamente en la tabla
-9. Exporta con **⬇ .xlsx** o **⬇ .csv**
+1. **Inicia sesión** → verás la pantalla con todos tus cuadernos
+2. **Crea un cuaderno nuevo** o abre uno existente
+3. En la pestaña **Temporalización**:
+   - Indica **Fechas del curso**
+   - Añade **Festivos**, **FEOE** y **Evaluaciones**
+   - Define los **Módulos** (día de la semana y horario)
+   - Añade **RAs y CEs** (manualmente o importando desde CATEDU)
+4. Pulsa **🧠 Proponer planificación por RAs** → se genera la distribución de sesiones y abre la pestaña **Planificación**
+5. Pulsa **⚡ Generar Calendario** → se genera el calendario completo y abre la pestaña **Calendario**
+6. En la pestaña **Calendario**: edita **Observaciones** y **RA Planificado** directamente en la tabla, y exporta con **⬇ .xlsx** o **⬇ .csv**
 
 ---
 

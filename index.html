@@ -217,6 +217,27 @@
     .ra-color-6 { border-left: 4px solid #ea580c; }
     .ra-color-7 { border-left: 4px solid #16a34a; }
 
+    /* === DOC TABS === */
+    .doc-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); padding-bottom: 0; margin-bottom: 0; }
+    .doc-tab { padding: 10px 20px; border: none; background: none; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: .15s; border-radius: 8px 8px 0 0; }
+    .doc-tab:hover { color: var(--accent); transform: none; box-shadow: none; }
+    .doc-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: #eff6ff; }
+    .doc-tab-panel { padding-top: 16px; }
+
+    /* === HOME PANEL === */
+    .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-top: 16px; }
+    .home-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; transition: .15s; display: flex; flex-direction: column; gap: 8px; }
+    .home-card.clickable { cursor: pointer; }
+    .home-card.clickable:hover { border-color: var(--accent); box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+    .home-card-new { border: 2px dashed var(--border); background: transparent; align-items: center; justify-content: center; min-height: 120px; cursor: pointer; color: var(--muted); font-size: 15px; font-weight: 600; }
+    .home-card-new:hover { border-color: var(--accent); color: var(--accent); background: #eff6ff; transform: translateY(-2px); }
+    .home-card-icon { width: 44px; height: 44px; border-radius: 12px; background: #dbeafe; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+    .home-card-title { font-weight: 700; font-size: 15px; }
+    .home-card-meta { font-size: 12px; color: var(--muted); }
+    .home-card-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+    .tab-empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .tab-empty-icon { font-size: 48px; margin-bottom: 12px; }
+
     /* === CATEDU IMPORT WIZARD === */
     .hidden { display: none !important; }
     .import-modal { background: var(--card); border-radius: 14px; width: 680px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,0.18); overflow: hidden; }
@@ -294,7 +315,7 @@
 <div id="app" style="display:none">
   <header id="app-header">
     <div class="header-inner">
-      <div class="header-logo">
+      <div class="header-logo" style="cursor:pointer" onclick="goHome()">
         <svg viewBox="0 0 100 100" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
           <rect width="100" height="100" rx="20" fill="#2563eb"/>
           <rect x="18" y="14" width="54" height="68" rx="6" fill="white" opacity="0.95"/>
@@ -319,6 +340,17 @@
   </header>
 
   <div class="wrap" style="padding-top:20px">
+
+    <!-- ========= HOME PANEL ========= -->
+    <div id="home-panel" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+        <div>
+          <h1 style="margin:0">📚 Mis cuadernos docentes</h1>
+          <p class="muted" style="font-size:13px;margin:4px 0 0">Selecciona un cuaderno para editarlo o crea uno nuevo.</p>
+        </div>
+      </div>
+      <div class="home-grid" id="mis-cuadernos-list"></div>
+    </div>
 
     <!-- ========= ADMIN PANEL ========= -->
     <div id="admin-panel" style="display:none">
@@ -359,162 +391,186 @@
 
     <!-- ========= DOCENTE PANEL ========= -->
     <div id="docente-panel" style="display:none">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-        <div>
-          <h1 style="margin:0">📅 Creador de Cuaderno Docente</h1>
-          <p class="muted" style="font-size:13px;margin:4px 0 0">Sigue los pasos para generar tu calendario. Los cambios se guardan automáticamente.</p>
-        </div>
-        <input type="text" id="cuaderno-title" placeholder="Título del cuaderno (ej. CFGM Informática 2024-25)" style="flex:1 1 280px;max-width:380px;font-weight:600;font-size:14px" />
+      <!-- Title row -->
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn ghost small" onclick="goHome()" style="white-space:nowrap">← Cuadernos</button>
+        <input type="text" id="cuaderno-title" placeholder="Título del cuaderno (ej. CFGM Informática 2024-25)" style="flex:1 1 240px;max-width:420px;font-weight:600;font-size:14px" />
       </div>
 
-      <div class="card">
-        <p class="note">Rellena los pasos 1–6 y pulsa <strong>⚡ Generar calendario</strong>. El resultado se muestra y guarda aquí mismo.</p>
-        <div class="hr"></div>
-
-        <div class="grid cols-2">
-          <!-- Step 1 -->
-          <div class="card">
-            <h2>1) Fechas del curso</h2>
-            <label>Fecha de inicio</label><input type="date" id="inicio" />
-            <label>Fecha de fin</label><input type="date" id="fin" />
-          </div>
-
-          <!-- Step 2 -->
-          <div class="card">
-            <h2>2) Festivos 🎌</h2>
-            <div class="row">
-              <div style="display:flex;gap:8px;flex:2 1 220px;flex-wrap:wrap">
-                <div style="flex:1 1 120px"><label>Inicio</label><input type="date" id="festivoInicio" /></div>
-                <div style="flex:1 1 120px"><label>Fin (opcional)</label><input type="date" id="festivoFin" /></div>
-              </div>
-              <input type="text" id="festivoMotivo" placeholder="Motivo (opcional)" />
-              <button class="btn" id="addFestivo">Añadir</button>
-            </div>
-            <div class="list" id="festivosList"></div>
-            <p class="note" style="margin-top:7px">Se marcan todos los días entre inicio y fin.</p>
-          </div>
-
-          <!-- Step 3 -->
-          <div class="card">
-            <h2>3) FEOE 🏭 <span style="font-size:12px;font-weight:400;color:var(--feoe)">Formación en Empresa u Organismo Equiparado</span></h2>
-            <div class="row">
-              <div style="display:flex;gap:8px;flex:2 1 220px;flex-wrap:wrap">
-                <div style="flex:1 1 120px"><label>Inicio</label><input type="date" id="feoeInicio" /></div>
-                <div style="flex:1 1 120px"><label>Fin (opcional)</label><input type="date" id="feoeFin" /></div>
-              </div>
-              <input type="text" id="feoeMotivo" placeholder="Empresa / organismo (opcional)" />
-              <button class="btn feoe-btn" id="addFeoe">Añadir FEOE</button>
-            </div>
-            <div class="list" id="feoeList"></div>
-            <p class="note purple" style="margin-top:7px">Días FEOE: fondo morado en el calendario, sin clases.</p>
-          </div>
-
-          <!-- Step 4 -->
-          <div class="card">
-            <h2>4) Evaluaciones 📝</h2>
-            <div class="row">
-              <input type="date" id="evalFecha" />
-              <input type="text" id="evalDesc" placeholder="Descripción (p. ej. 1ª Eval 1ºCFGM)" />
-              <label style="align-self:center;flex:0 0 auto;display:flex;align-items:center;gap:6px"><input type="checkbox" id="evalBloquea" /> Bloquea sesiones</label>
-              <button class="btn" id="addEval">Añadir</button>
-            </div>
-            <div class="list" id="evalsList"></div>
-          </div>
-
-          <!-- Step 5 -->
-          <div class="card" style="grid-column:1/-1">
-            <h2>5) Módulos, día y horas (semanal) 📘</h2>
-            <div class="row">
-              <input type="text" id="moduloNombre" placeholder="Nombre del módulo (p. ej. SORE 0224)" />
-              <select id="moduloDia">
-                <option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option>
-                <option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="0">Domingo</option>
-              </select>
-              <input type="time" id="moduloInicio" value="08:00" />
-              <input type="time" id="moduloFin" value="10:00" />
-              <button class="btn" id="addModulo">Añadir módulo</button>
-            </div>
-            <div class="list" id="modulosList"></div>
-            <p class="note" style="margin-top:7px">Se repiten semanalmente, excluyendo festivos, FEOE y evaluaciones bloqueantes.</p>
-          </div>
-        </div>
+      <!-- Tab navigation -->
+      <div class="doc-tabs">
+        <button class="doc-tab active" data-doctab="temporalizacion" onclick="showDocTab('temporalizacion')">📅 Temporalización</button>
+        <button class="doc-tab" data-doctab="planificacion" onclick="showDocTab('planificacion')">🧠 Planificación</button>
+        <button class="doc-tab" data-doctab="calendario" onclick="showDocTab('calendario')">📆 Calendario</button>
       </div>
 
-      <!-- Step 6: RAs -->
-      <div class="card section-mt">
-        <div class="accordion-header open" id="raAccHeader">
-          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:1;min-width:0">
-            <h2 style="margin:0">6) Resultados de Aprendizaje (RAs) y Criterios de Evaluación (CEs) 🎯</h2>
-            <button class="btn import-btn" onclick="openCateduImport();event.stopPropagation()" style="font-size:12px;padding:6px 14px;border-radius:999px;white-space:nowrap;flex-shrink:0">
-              🔍 Buscar módulo en CATEDU
-            </button>
-          </div>
-          <span class="arrow">▼</span>
-        </div>
-        <div class="accordion-body" id="raAccBody">
+      <!-- TAB: Temporalización -->
+      <div id="doctab-temporalizacion" class="doc-tab-panel">
+        <div class="card">
+          <p class="note">Rellena los pasos 1–6 y pulsa <strong>⚡ Generar calendario</strong>. El resultado se muestra en la pestaña <strong>Calendario</strong>.</p>
           <div class="hr"></div>
 
-          <!-- Hidden inputs kept for JS compatibility -->
-          <input type="hidden" id="raNum" /><input type="hidden" id="raContenido" />
-          <input type="hidden" id="ceNum" /><input type="hidden" id="ceDesc" />
-          <button id="addCeTemp" style="display:none"></button>
-          <button id="addRa" style="display:none"></button>
-          <div id="ceTempList" style="display:none"></div>
+          <div class="grid cols-2">
+            <!-- Step 1 -->
+            <div class="card">
+              <h2>1) Fechas del curso</h2>
+              <label>Fecha de inicio</label><input type="date" id="inicio" />
+              <label>Fecha de fin</label><input type="date" id="fin" />
+            </div>
 
-          <div class="ra-container" id="raContainer">
-            <p class="empty-state" id="raEmptyState">No hay RAs definidos todavía.</p>
+            <!-- Step 2 -->
+            <div class="card">
+              <h2>2) Festivos 🎌</h2>
+              <div class="row">
+                <div style="display:flex;gap:8px;flex:2 1 220px;flex-wrap:wrap">
+                  <div style="flex:1 1 120px"><label>Inicio</label><input type="date" id="festivoInicio" /></div>
+                  <div style="flex:1 1 120px"><label>Fin (opcional)</label><input type="date" id="festivoFin" /></div>
+                </div>
+                <input type="text" id="festivoMotivo" placeholder="Motivo (opcional)" />
+                <button class="btn" id="addFestivo">Añadir</button>
+              </div>
+              <div class="list" id="festivosList"></div>
+              <p class="note" style="margin-top:7px">Se marcan todos los días entre inicio y fin.</p>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="card">
+              <h2>3) FEOE 🏭 <span style="font-size:12px;font-weight:400;color:var(--feoe)">Formación en Empresa u Organismo Equiparado</span></h2>
+              <div class="row">
+                <div style="display:flex;gap:8px;flex:2 1 220px;flex-wrap:wrap">
+                  <div style="flex:1 1 120px"><label>Inicio</label><input type="date" id="feoeInicio" /></div>
+                  <div style="flex:1 1 120px"><label>Fin (opcional)</label><input type="date" id="feoeFin" /></div>
+                </div>
+                <input type="text" id="feoeMotivo" placeholder="Empresa / organismo (opcional)" />
+                <button class="btn feoe-btn" id="addFeoe">Añadir FEOE</button>
+              </div>
+              <div class="list" id="feoeList"></div>
+              <p class="note purple" style="margin-top:7px">Días FEOE: fondo morado en el calendario, sin clases.</p>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="card">
+              <h2>4) Evaluaciones 📝</h2>
+              <div class="row">
+                <input type="date" id="evalFecha" />
+                <input type="text" id="evalDesc" placeholder="Descripción (p. ej. 1ª Eval 1ºCFGM)" />
+                <label style="align-self:center;flex:0 0 auto;display:flex;align-items:center;gap:6px"><input type="checkbox" id="evalBloquea" /> Bloquea sesiones</label>
+                <button class="btn" id="addEval">Añadir</button>
+              </div>
+              <div class="list" id="evalsList"></div>
+            </div>
+
+            <!-- Step 5 -->
+            <div class="card" style="grid-column:1/-1">
+              <h2>5) Módulos, día y horas (semanal) 📘</h2>
+              <div class="row">
+                <input type="text" id="moduloNombre" placeholder="Nombre del módulo (p. ej. SORE 0224)" />
+                <select id="moduloDia">
+                  <option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option>
+                  <option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="0">Domingo</option>
+                </select>
+                <input type="time" id="moduloInicio" value="08:00" />
+                <input type="time" id="moduloFin" value="10:00" />
+                <button class="btn" id="addModulo">Añadir módulo</button>
+              </div>
+              <div class="list" id="modulosList"></div>
+              <p class="note" style="margin-top:7px">Se repiten semanalmente, excluyendo festivos, FEOE y evaluaciones bloqueantes.</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Action buttons -->
-      <div class="action-bar">
-        <div class="action-row">
-          <button class="btn ghost" id="limpiarTodo" style="flex:0 0 auto;padding:13px 18px">🗑 Limpiar todo</button>
-          <button class="btn-plan" id="planificar">🧠 Proponer planificación por RAs</button>
-        </div>
-        <button class="btn-generate" id="generar">⚡ GENERAR CALENDARIO</button>
-      </div>
+        <!-- Step 6: RAs -->
+        <div class="card section-mt">
+          <div class="accordion-header open" id="raAccHeader">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:1;min-width:0">
+              <h2 style="margin:0">6) Resultados de Aprendizaje (RAs) y Criterios de Evaluación (CEs) 🎯</h2>
+              <button class="btn import-btn" onclick="openCateduImport();event.stopPropagation()" style="font-size:12px;padding:6px 14px;border-radius:999px;white-space:nowrap;flex-shrink:0">
+                🔍 Buscar módulo en CATEDU
+              </button>
+            </div>
+            <span class="arrow">▼</span>
+          </div>
+          <div class="accordion-body" id="raAccBody">
+            <div class="hr"></div>
 
-      <!-- Planning output -->
-      <div id="salidaPlan" class="card section-mt" style="display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-          <h2 style="margin:0">🧠 Planificación estimada por RAs</h2>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn ghost small" id="copiarPlan">📋 Copiar</button>
-            <button class="btn ghost small" id="exportarPlan">⬇ .txt</button>
-            <button class="btn ghost small" id="cerrarPlan">✕ Cerrar</button>
+            <!-- Hidden inputs kept for JS compatibility -->
+            <input type="hidden" id="raNum" /><input type="hidden" id="raContenido" />
+            <input type="hidden" id="ceNum" /><input type="hidden" id="ceDesc" />
+            <button id="addCeTemp" style="display:none"></button>
+            <button id="addRa" style="display:none"></button>
+            <div id="ceTempList" style="display:none"></div>
+
+            <div class="ra-container" id="raContainer">
+              <p class="empty-state" id="raEmptyState">No hay RAs definidos todavía.</p>
+            </div>
           </div>
         </div>
-        <p style="font-size:13px;color:var(--muted);margin:4px 0 12px">Distribución equitativa de sesiones entre los RAs definidos, teniendo en cuenta festivos, FEOE y evaluaciones.</p>
-        <div class="hr"></div>
-        <div id="planContent"></div>
-      </div>
 
-      <!-- Calendar output -->
-      <div id="salida" class="card section-mt" style="display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-          <h2 style="margin:0">📆 Calendario generado</h2>
-          <div class="right">
-            <button class="btn primary small" id="descargarXLSX">⬇ .xlsx</button>
-            <button class="btn ghost small" id="descargarCSV">⬇ .csv</button>
-            <button class="btn ghost small" id="descargarHTML">⬇ .html</button>
-            <button class="btn ghost small" id="copiarHTML">📋 Copiar tabla</button>
+        <!-- Action buttons -->
+        <div class="action-bar">
+          <div class="action-row">
+            <button class="btn ghost" id="limpiarTodo" style="flex:0 0 auto;padding:13px 18px">🗑 Limpiar todo</button>
+            <button class="btn-plan" id="planificar">🧠 Proponer planificación por RAs</button>
           </div>
+          <button class="btn-generate" id="generar">⚡ GENERAR CALENDARIO</button>
         </div>
-        <div id="meta" class="muted" style="font-size:13px;margin-bottom:10px"></div>
-        <p style="font-size:12px;color:var(--accent2);margin:0 0 8px">💡 Puedes editar la columna <strong>Observaciones</strong> y el <strong>RA Planificado</strong> directamente en la tabla. Los cambios se guardan automáticamente.</p>
-        <div class="table-wrap">
-          <table id="tabla">
-            <thead><tr>
-              <th>Fecha</th><th>Día</th><th>Tipo</th><th>Módulo</th>
-              <th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>RA Planificado</th>
-            </tr></thead>
-            <tbody id="tabla-tbody"></tbody>
-          </table>
+      </div><!-- /doctab-temporalizacion -->
+
+      <!-- TAB: Planificación -->
+      <div id="doctab-planificacion" class="doc-tab-panel" style="display:none">
+        <div id="salidaPlan" class="card section-mt" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+            <h2 style="margin:0">🧠 Planificación estimada por RAs</h2>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn ghost small" id="copiarPlan">📋 Copiar</button>
+              <button class="btn ghost small" id="exportarPlan">⬇ .txt</button>
+              <button class="btn ghost small" id="cerrarPlan">← Volver a Temporalización</button>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--muted);margin:4px 0 12px">Distribución equitativa de sesiones entre los RAs definidos, teniendo en cuenta festivos, FEOE y evaluaciones.</p>
+          <div class="hr"></div>
+          <div id="planContent"></div>
         </div>
-        <p class="note" style="margin-top:8px">El .xlsx incluye: hoja <strong>Calendario</strong>, hoja <strong>RAs y CEs</strong> y (si planificaste) hoja <strong>Planificación por RAs</strong>.</p>
-      </div>
+        <div id="plan-empty-state" class="tab-empty">
+          <div class="tab-empty-icon">🧠</div>
+          <p style="font-size:15px;font-weight:600;margin:0 0 8px">Sin planificación generada</p>
+          <p style="font-size:13px;margin:0">Ve a <strong>Temporalización</strong> y pulsa <strong>🧠 Proponer planificación por RAs</strong>.</p>
+          <button class="btn primary" style="margin-top:16px" onclick="showDocTab('temporalizacion')">← Ir a Temporalización</button>
+        </div>
+      </div><!-- /doctab-planificacion -->
+
+      <!-- TAB: Calendario -->
+      <div id="doctab-calendario" class="doc-tab-panel" style="display:none">
+        <div id="salida" class="card section-mt" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            <h2 style="margin:0">📆 Calendario generado</h2>
+            <div class="right">
+              <button class="btn primary small" id="descargarXLSX">⬇ .xlsx</button>
+              <button class="btn ghost small" id="descargarCSV">⬇ .csv</button>
+              <button class="btn ghost small" id="descargarHTML">⬇ .html</button>
+              <button class="btn ghost small" id="copiarHTML">📋 Copiar tabla</button>
+            </div>
+          </div>
+          <div id="meta" class="muted" style="font-size:13px;margin-bottom:10px"></div>
+          <p style="font-size:12px;color:var(--accent2);margin:0 0 8px">💡 Puedes editar la columna <strong>Observaciones</strong> y el <strong>RA Planificado</strong> directamente en la tabla. Los cambios se guardan automáticamente.</p>
+          <div class="table-wrap">
+            <table id="tabla">
+              <thead><tr>
+                <th>Fecha</th><th>Día</th><th>Tipo</th><th>Módulo</th>
+                <th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>RA Planificado</th>
+              </tr></thead>
+              <tbody id="tabla-tbody"></tbody>
+            </table>
+          </div>
+          <p class="note" style="margin-top:8px">El .xlsx incluye: hoja <strong>Calendario</strong>, hoja <strong>RAs y CEs</strong> y (si planificaste) hoja <strong>Planificación por RAs</strong>.</p>
+        </div>
+        <div id="calendario-empty-state" class="tab-empty">
+          <div class="tab-empty-icon">📆</div>
+          <p style="font-size:15px;font-weight:600;margin:0 0 8px">Sin calendario generado</p>
+          <p style="font-size:13px;margin:0">Ve a <strong>Temporalización</strong> y pulsa <strong>⚡ Generar Calendario</strong>.</p>
+          <button class="btn primary" style="margin-top:16px" onclick="showDocTab('temporalizacion')">← Ir a Temporalización</button>
+        </div>
+      </div><!-- /doctab-calendario -->
     </div>
 
     <!-- ========= ADMIN VIEW CUADERNO ========= -->
@@ -683,7 +739,7 @@ async function showApp() {
   } else {
     byId('btn-admin-panel').style.display = 'none';
     byId('btn-my-cuaderno').style.display = 'none';
-    await loadAndShowDocente();
+    showHomePanel();
   }
 }
 
@@ -762,6 +818,7 @@ function hideAllPanels() {
   byId('admin-panel').style.display = 'none';
   byId('docente-panel').style.display = 'none';
   byId('admin-cuaderno-view').style.display = 'none';
+  byId('home-panel').style.display = 'none';
 }
 
 function showAdminPanel() {
@@ -770,10 +827,113 @@ function showAdminPanel() {
   loadAdminData();
 }
 
-async function loadAndShowDocente() {
+function showHomePanel() {
+  hideAllPanels();
+  byId('home-panel').style.display = 'block';
+  loadMisCuadernos();
+}
+
+function goHome() {
+  if (!currentUser) return;
+  if (currentUser.role === 'admin') showAdminPanel();
+  else showHomePanel();
+}
+
+async function loadMisCuadernos() {
+  const container = byId('mis-cuadernos-list');
+  container.innerHTML = '<p class="empty-state">Cargando...</p>';
+  try {
+    const res = await apiFetch('/api/mis-cuadernos');
+    const list = await res.json();
+    container.innerHTML = '';
+
+    const newCard = document.createElement('div');
+    newCard.className = 'home-card home-card-new';
+    newCard.innerHTML = '<span style="font-size:28px">+</span><span>Nuevo cuaderno</span>';
+    newCard.onclick = createNewCuaderno;
+    container.appendChild(newCard);
+
+    list.forEach(c => {
+      const card = document.createElement('div');
+      card.className = 'home-card clickable';
+      const badges = [];
+      if (c.has_state) badges.push('<span class="badge badge-clase">Con datos</span>');
+      if (c.has_calendar) badges.push('<span class="badge badge-eval">Con calendario</span>');
+      if (c.has_plan) badges.push('<span class="badge" style="background:#ede9fe;color:#7c3aed">Con planificación</span>');
+      card.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="home-card-icon">📋</div>
+          <div style="flex:1;min-width:0">
+            <div class="home-card-title">${esc(c.title || 'Mi Cuaderno')}</div>
+            <div class="home-card-meta">Actualizado: ${fmtDateTime(c.updated_at)}</div>
+          </div>
+        </div>
+        ${badges.length ? `<div class="home-card-badges">${badges.join('')}</div>` : ''}
+      `;
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn ghost small';
+      delBtn.style.cssText = 'align-self:flex-start;font-size:11px;color:var(--danger);border-color:var(--danger)';
+      delBtn.textContent = '🗑 Eliminar';
+      delBtn.onclick = e => { e.stopPropagation(); deleteMiCuaderno(c.id, c.title || 'Mi Cuaderno'); };
+      card.appendChild(delBtn);
+      card.onclick = () => openCuaderno(c.id);
+      container.appendChild(card);
+    });
+
+    if (!list.length) {
+      const msg = document.createElement('p');
+      msg.className = 'empty-state';
+      msg.style.cssText = 'grid-column:1/-1;text-align:center;padding:20px';
+      msg.textContent = 'Aún no tienes cuadernos. Crea uno nuevo.';
+      container.appendChild(msg);
+    }
+  } catch {
+    container.innerHTML = '<p class="empty-state">Error cargando cuadernos.</p>';
+  }
+}
+
+async function createNewCuaderno() {
+  try {
+    const res = await apiFetch('/api/cuaderno', { method: 'POST', body: JSON.stringify({ title: 'Nuevo cuaderno' }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    await openCuaderno(data.id);
+  } catch (e) {
+    alert('Error creando cuaderno: ' + e.message);
+  }
+}
+
+async function openCuaderno(id) {
+  resetDocenteState();
+  currentCuadernoId = id;
   hideAllPanels();
   byId('docente-panel').style.display = 'block';
-  await loadCuadernoFromServer();
+  showDocTab('temporalizacion');
+  await loadCuadernoFromServer(id);
+}
+
+async function deleteMiCuaderno(id, title) {
+  if (!confirm(`¿Eliminar el cuaderno "${title}"? Esta acción no se puede deshacer.`)) return;
+  try {
+    const res = await apiFetch('/api/cuaderno/' + id, { method: 'DELETE' });
+    if (!res.ok) throw new Error((await res.json()).error);
+    await loadMisCuadernos();
+  } catch (e) {
+    alert('Error eliminando: ' + e.message);
+  }
+}
+
+function showDocTab(name) {
+  document.querySelectorAll('.doc-tab').forEach(t => t.classList.toggle('active', t.dataset.doctab === name));
+  document.querySelectorAll('.doc-tab-panel').forEach(p => { p.style.display = p.id === 'doctab-' + name ? 'block' : 'none'; });
+}
+
+async function loadAndShowDocente() {
+  resetDocenteState();
+  hideAllPanels();
+  byId('docente-panel').style.display = 'block';
+  showDocTab('temporalizacion');
+  await loadCuadernoFromServer(currentCuadernoId);
 }
 
 // === ADMIN PANEL ===
@@ -971,6 +1131,7 @@ function renderAdminCuaderno(data) {
 // === STATE (DOCENTE) ===
 let isLoading = false;
 let saveTimer = null;
+let currentCuadernoId = null;
 const festivos = new Map(), feoes = new Map(), evaluaciones = new Map();
 const modulos = [], RAs = [];
 let planMap = new Map(), lastAsignaciones = [], ceTempList = [], pendingImport = [];
@@ -978,9 +1139,11 @@ let planSesiones = [], planSesCounts = [], planLocked = [];
 let calendarRows = [];
 
 function resetDocenteState() {
+  currentCuadernoId = null;
   festivos.clear(); feoes.clear(); evaluaciones.clear();
   modulos.splice(0); RAs.splice(0); planMap = new Map();
   lastAsignaciones = []; ceTempList = []; calendarRows = [];
+  planSesiones = []; planSesCounts = []; planLocked = [];
 }
 
 function getState() {
@@ -1046,7 +1209,8 @@ async function doSave() {
   try {
     setSaveStatus('saving');
     const state = getState();
-    const res = await apiFetch('/api/cuaderno', {
+    const endpoint = currentCuadernoId ? '/api/cuaderno/' + currentCuadernoId : '/api/cuaderno';
+    const res = await apiFetch(endpoint, {
       method: 'PUT',
       body: JSON.stringify({ title: state.title, state_json: state, calendar_json: calendarRows })
     });
@@ -1058,15 +1222,20 @@ async function doSave() {
   }
 }
 
-async function loadCuadernoFromServer() {
+async function loadCuadernoFromServer(id) {
   try {
-    const res = await apiFetch('/api/cuaderno');
+    const endpoint = id ? '/api/cuaderno/' + id : '/api/cuaderno';
+    const res = await apiFetch(endpoint);
     if (!res.ok) return;
     const data = await res.json();
+    if (data.id) currentCuadernoId = data.id;
+    if (data.title && byId('cuaderno-title')) byId('cuaderno-title').value = data.title;
     restoreState(data.state_json);
     if (Array.isArray(data.calendar_json) && data.calendar_json.length) {
       calendarRows = data.calendar_json;
       renderCalendarFromRows(calendarRows);
+      byId('salida').style.display = 'block';
+      byId('calendario-empty-state').style.display = 'none';
     }
   } catch {}
 }
@@ -1208,7 +1377,10 @@ byId('limpiarTodo').onclick = () => {
   planMap = new Map(); lastAsignaciones = []; calendarRows = [];
   byId('tabla-tbody').innerHTML = '';
   byId('salida').style.display = 'none';
+  byId('calendario-empty-state').style.display = 'block';
   byId('salidaPlan').style.display = 'none';
+  byId('plan-empty-state').style.display = 'block';
+  showDocTab('temporalizacion');
   scheduleAutoSave();
 };
 byId('addCeTemp').onclick = () => {
@@ -1618,7 +1790,8 @@ byId('generar').onclick = () => {
 
   byId('meta').innerHTML = `<strong>${stats.diasTotales}</strong> días · <strong>${stats.totSes}</strong> sesiones · <strong>${stats.totalHoras.toFixed(2)}</strong> h · Festivos: ${stats.countFestivos} · FEOE: ${stats.countFeoe} · Evaluaciones: ${stats.totEval}`;
   byId('salida').style.display = 'block';
-  byId('salida').scrollIntoView({behavior:'smooth',block:'start'});
+  byId('calendario-empty-state').style.display = 'none';
+  showDocTab('calendario');
   scheduleAutoSave();
 };
 
@@ -1669,10 +1842,15 @@ function renderCalendarFromRows(rows) {
   });
 
   byId('salida').style.display = rows.length ? 'block' : 'none';
+  if (byId('calendario-empty-state')) byId('calendario-empty-state').style.display = rows.length ? 'none' : 'block';
 }
 
 // === PLANNING ===
-byId('cerrarPlan').onclick = () => byId('salidaPlan').style.display = 'none';
+byId('cerrarPlan').onclick = () => {
+  byId('salidaPlan').style.display = 'none';
+  byId('plan-empty-state').style.display = 'block';
+  showDocTab('temporalizacion');
+};
 
 function planToText() {
   const el = byId('planContent');
@@ -1908,7 +2086,8 @@ byId('planificar').onclick = () => {
   _renderPlanCards(asignaciones);
 
   byId('salidaPlan').style.display = 'block';
-  byId('salidaPlan').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  byId('plan-empty-state').style.display = 'none';
+  showDocTab('planificacion');
   scheduleAutoSave();
 };
 
