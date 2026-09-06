@@ -2105,6 +2105,21 @@ function csvATemporalizacion(text) {
   if (errores.length) throw new Error(errores.slice(0,5).join('\n') + (errores.length > 5 ? `\n… (+${errores.length-5})` : ''));
   return t;
 }
+// Decide JSON o CSV por extensión y, si no es concluyente, intentando parsear JSON y cayendo a CSV
+function leerTemporalizacion(text, nombre) {
+  const ext = (nombre || '').toLowerCase().split('.').pop();
+  const limpio = text.replace(/^\uFEFF/, '').trim();
+  const intentarJson = () => { try { return JSON.parse(limpio); } catch { return undefined; } };
+  if (ext === 'json') {
+    const j = intentarJson();
+    if (j === undefined) throw new Error('El fichero .json no es JSON válido.');
+    return j;
+  }
+  if (ext === 'csv' || ext === 'tsv') return csvATemporalizacion(limpio);
+  const j = intentarJson();
+  if (j !== undefined && typeof j === 'object' && j !== null) return j;
+  return csvATemporalizacion(limpio);
+}
 function normalizarTemporalizacion(t) {
   if (!t || typeof t !== 'object') throw new Error('Formato no reconocido');
   const norm = { inicio: parseFecha(t.inicio) || '', fin: parseFecha(t.fin) || '', festivos: [], feoes: [], evaluaciones: [] };
@@ -2137,7 +2152,7 @@ byId('importTempFile').onchange = async (ev) => {
   if (!file) return;
   try {
     const text = await file.text();
-    const t = normalizarTemporalizacion(/^\s*[\[{]/.test(text) ? JSON.parse(text) : csvATemporalizacion(text));
+    const t = normalizarTemporalizacion(leerTemporalizacion(text, file.name));
     const nFest = t.festivos.reduce((a,r) => a + rangoDias(r.inicio, r.fin).length, 0);
     const nFeoe = t.feoes.reduce((a,r) => a + rangoDias(r.inicio, r.fin).length, 0);
     if (!t.inicio && !t.fin && !nFest && !nFeoe && !t.evaluaciones.length) throw new Error('El fichero no contiene fechas de curso, festivos, FEOE ni evaluaciones.');
