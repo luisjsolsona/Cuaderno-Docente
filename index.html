@@ -1399,25 +1399,37 @@ async function crearCuadernoParaDocente() {
   try { const r = await apiFetch('/api/temporalizaciones'); temps = r.ok ? await r.json() : []; } catch {}
   const body = `
     <label>Docente *</label><select id="nc-user">${users.map(u => `<option value="${u.id}">${esc(u.display_name || u.username)} (${esc(u.username)})</option>`).join('')}</select>
-    <label>Título</label><input type="text" id="nc-title" placeholder="p. ej. SORE 1º SMR" />
-    <label>Ciclo</label><input type="text" id="nc-ciclo" placeholder="p. ej. 1º SMR CFGM" />
+    <label>Módulo *</label>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn primary small" id="nc-modulo-btn">🔍 Elegir módulo en CATEDU</button>
+      <span class="note" id="nc-modulo-info" style="margin:0">Ninguno (título, ciclo y RAs se rellenan al elegirlo)</span>
+    </div>
+    <label>Título</label><input type="text" id="nc-title" placeholder="Se rellena al elegir el módulo" />
+    <label>Ciclo</label><input type="text" id="nc-ciclo" placeholder="Se rellena al elegir el módulo" />
     <label>Temporalización de centro</label><select id="nc-temp"><option value="">— Ninguna (el docente la aplicará) —</option>${temps.map(t => `<option value="${t.id}">${esc(t.nombre)}${t.curso ? ' · ' + esc(t.curso) : ''} · ${esc(etiquetaNivel(t.nivel))}</option>`).join('')}</select>
     <p class="note" style="margin-top:6px">Al escribir el ciclo se preselecciona la temporalización del nivel deducido (FPB → CFGB, CFGM…).</p>`;
+  let elegido = null; // { mod, ciclo, nivel, ras }
   openModal('Nuevo cuaderno para un docente', body, [
     { text: 'Cancelar', cls: 'ghost', action: closeModal },
     { text: 'Crear', cls: 'primary', action: async () => {
       const user_id = byId('nc-user').value; if (!user_id) return alert('Elige un docente');
       const payload = { user_id: Number(user_id), title: byId('nc-title').value.trim() || 'Nuevo cuaderno', ciclo: byId('nc-ciclo').value.trim() };
+      if (elegido) { payload.ras = elegido.ras; payload.modulo_nombre = elegido.mod.nombre; }
       const tid = byId('nc-temp').value; if (tid) payload.temporalizacion_id = Number(tid);
       const res = await apiFetch('/api/cuaderno', { method: 'POST', body: JSON.stringify(payload) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); return alert(e.error || 'Error al crear'); }
       closeModal(); loadAdminCuadernos();
     } }
   ]);
-  byId('nc-ciclo').oninput = () => {
-    const n = nivelDesdeCiclo(byId('nc-ciclo').value); if (!n) return;
-    const t = temps.find(x => x.nivel === n); if (t) byId('nc-temp').value = String(t.id);
-  };
+  const preseleccionarTemp = n => { const t = n && temps.find(x => x.nivel === n); if (t) byId('nc-temp').value = String(t.id); };
+  byId('nc-ciclo').oninput = () => preseleccionarTemp(nivelDesdeCiclo(byId('nc-ciclo').value));
+  byId('nc-modulo-btn').onclick = () => openCateduImport(false, r => {
+    elegido = r;
+    byId('nc-title').value = `${r.mod.cod} ${r.mod.nombre}`.trim();
+    byId('nc-ciclo').value = [r.nivel, r.ciclo.nombre].filter(Boolean).join(' ');
+    byId('nc-modulo-info').textContent = `${r.mod.cod} · ${r.mod.nombre} · ${r.ras.length} RAs`;
+    preseleccionarTemp(r.nivel);
+  });
 }
 
 async function vaciarCacheCatedu() {
@@ -2115,6 +2127,7 @@ function restoreState(s) {
   planSesCounts  = Array.isArray(s.planSesCounts) ? s.planSesCounts : [];
   planLocked     = Array.isArray(s.planLocked)    ? s.planLocked    : [];
   centroTemp     = (s.centroTemp && typeof s.centroTemp === 'object') ? s.centroTemp : null;
+  if (s.moduloNombre && !modulos.length && byId('moduloNombre')) byId('moduloNombre').value = s.moduloNombre; // módulo elegido por jefatura, falta horario
   renderFestivos(); renderFeoes(); renderEvals(); renderModulos(); renderRAs();
   isLoading = false;
 }
@@ -2736,6 +2749,7 @@ let importCurrentStep = 1;
 let importSelectedCicloNombre = '';
 let importSelectedCiclo = null;      // { cod, nombre, grado }
 let importOnboarding = false;        // true cuando el asistente forma parte de la creación de un cuaderno nuevo
+let importPicker = null;             // callback: el asistente devuelve {mod, ciclo, nivel, ras} sin tocar el cuaderno abierto (uso desde admin)
 const importCache = {};
 
 const PROXIES_LIST = [
@@ -2776,10 +2790,11 @@ async function fetchViaProxyImport(url, timeoutMs = 10000) {
   return null;
 }
 
-function openCateduImport(onboarding = false) {
-  importOnboarding = onboarding;
-  byId('importCateduTitle').textContent = onboarding ? '1/2 · Elige el módulo del nuevo cuaderno' : '📥 Importar RAs desde CATEDU';
-  byId('importApplyBtn').textContent = onboarding ? '✔ Crear cuaderno con este módulo' : '✔ Aplicar';
+function openCateduImport(onboarding = false, picker = null) {
+  importOnboarding = onboarding; importPicker = picker;
+  byId('importCateduTitle').textContent = picker ? 'Elige el módulo del cuaderno' : onboarding ? '1/2 · Elige el módulo del nuevo cuaderno' : '📥 Importar RAs desde CATEDU';
+  byId('importApplyBtn').textContent = (picker || onboarding) ? '✔ Usar este módulo' : '✔ Aplicar';
+  byId('importCateduModal').style.zIndex = picker ? '300' : '';
   importSelectedMod = null; importRaList = []; importSelectedCicloNombre = ''; importSelectedCiclo = null;
   byId('importApplyBtn').disabled = true;
   setImportRaStatus('', '');
@@ -2787,7 +2802,7 @@ function openCateduImport(onboarding = false) {
   importGoToStep(1);
 }
 
-function closeImportModal() { byId('importCateduModal').classList.add('hidden'); importOnboarding = false; }
+function closeImportModal() { byId('importCateduModal').classList.add('hidden'); importOnboarding = false; importPicker = null; }
 
 function importGoToStep(n) {
   importCurrentStep = n;
@@ -2963,7 +2978,7 @@ function selectModuloCatedu(mod) {
   byId('importModMeta').textContent = [horasLabel, importSelectedCicloNombre || mod.ciclo].filter(Boolean).join(' - ');
   byId('importApplyBtn').disabled = true;
   importGoToStep(4);
-  if (importOnboarding) doImportRas();
+  if (importOnboarding || importPicker) doImportRas();
 }
 
 function setImportRaStatus(msg, cls) {
@@ -3074,6 +3089,13 @@ function nivelDesdeCodigoCiclo(cod) {
 }
 function applyImport() {
   if (!importRaList.length) { setImportRaStatus('Carga primero los RAs pulsando "Cargar RAs desde CATEDU"', 'err'); return; }
+  if (importPicker) {
+    const mod = importSelectedMod, cic = importSelectedCiclo || {};
+    const nivel = nivelDesdeCiclo(cic.grado) || nivelDesdeCiclo(cic.nombre) || nivelDesdeCodigoCiclo(cic.cod);
+    const cb = importPicker; closeImportModal();
+    cb({ mod, ciclo: cic, nivel, ras: importRaList.slice() });
+    return;
+  }
   importRaList.forEach(ra => RAs.push(ra));
   renderRAs();
   if (importOnboarding && importSelectedMod) {

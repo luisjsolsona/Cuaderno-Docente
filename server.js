@@ -250,7 +250,7 @@ app.get('/api/otros-cuadernos', auth, (req, res) => {
 
 // Crear cuaderno. Admin/jefatura pueden crearlo para otro docente (user_id) y con una temporalización de centro ya aplicada (temporalizacion_id)
 app.post('/api/cuaderno', auth, (req, res) => {
-  const { title, ciclo, user_id, temporalizacion_id } = req.body || {};
+  const { title, ciclo, user_id, temporalizacion_id, ras, modulo_nombre } = req.body || {};
   const t = String(title || 'Nuevo cuaderno').trim();
   const c = String(ciclo || '').trim();
   let owner = req.user.id;
@@ -266,6 +266,12 @@ app.post('/api/cuaderno', auth, (req, res) => {
     if (!tc) return res.status(404).json({ error: 'Temporalización no encontrada' });
     state = estadoDesdeTemporalizacion(tc, all);
   }
+  // RAs y módulo elegidos por jefatura en CATEDU (el horario lo pone el docente)
+  if (Array.isArray(ras) && ras.length) {
+    if (ras.length > 50) return res.status(400).json({ error: 'Demasiados RAs' });
+    state.RAs = ras.filter(r => r && typeof r === 'object').map(r => ({ ...r, ces: Array.isArray(r.ces) ? r.ces : [] }));
+  }
+  if (modulo_nombre) state.moduloNombre = String(modulo_nombre).slice(0, 120);
   const r = db.prepare("INSERT INTO cuadernos (user_id, title, ciclo, state_json) VALUES (?, ?, ?, ?)").run(owner, t, c, JSON.stringify(state));
   res.json({ id: r.lastInsertRowid, title: t, ciclo: c, user_id: owner });
 });

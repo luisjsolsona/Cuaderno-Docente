@@ -33,7 +33,7 @@ Aplicación web para crear y gestionar **cuadernos docentes interactivos**. Cada
 ### Jefatura
 - Control total sobre todos los cuadernos (ver y editar)
 - Publica y mantiene las **temporalizaciones de centro**
-- Crea **cuadernos asignados a un docente** (panel admin → Cuadernos → *+ Nuevo cuaderno para un docente*), opcionalmente con la temporalización de centro ya aplicada
+- Crea **cuadernos asignados a un docente** (panel admin → Cuadernos → *+ Nuevo cuaderno para un docente*): elige el módulo en CATEDU (título, ciclo y RAs quedan rellenos) y la temporalización de centro del nivel; el docente solo añade el horario
 - Gestión de usuarios
 - Acceso al panel de administración
 
