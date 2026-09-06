@@ -410,7 +410,10 @@
       <!-- Cuadernos tab -->
       <div id="tab-cuadernos" style="display:none">
         <div class="card">
-          <h2>Cuadernos de los docentes</h2>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <h2 style="margin:0">Cuadernos de los docentes</h2>
+            <button class="btn primary small" onclick="crearCuadernoParaDocente()">+ Nuevo cuaderno para un docente</button>
+          </div>
           <div id="cuadernos-list"><p class="empty-state">Cargando...</p></div>
         </div>
       </div>
@@ -1257,6 +1260,34 @@ function deleteUser(id, name) {
       } catch (e) { alert(e.message); }
     }}
   ]);
+}
+
+// Jefatura crea un cuaderno asignado a un docente, opcionalmente con la temporalización de centro ya aplicada
+async function crearCuadernoParaDocente() {
+  let users = [], temps = [];
+  try { const r = await apiFetch('/api/users'); users = r.ok ? (await r.json()).filter(u => u.role !== 'admin') : []; } catch {}
+  try { const r = await apiFetch('/api/temporalizaciones'); temps = r.ok ? await r.json() : []; } catch {}
+  const body = `
+    <label>Docente *</label><select id="nc-user">${users.map(u => `<option value="${u.id}">${esc(u.display_name || u.username)} (${esc(u.username)})</option>`).join('')}</select>
+    <label>Título</label><input type="text" id="nc-title" placeholder="p. ej. SORE 1º SMR" />
+    <label>Ciclo</label><input type="text" id="nc-ciclo" placeholder="p. ej. 1º SMR CFGM" />
+    <label>Temporalización de centro</label><select id="nc-temp"><option value="">— Ninguna (el docente la aplicará) —</option>${temps.map(t => `<option value="${t.id}">${esc(t.nombre)}${t.curso ? ' · ' + esc(t.curso) : ''} · ${esc(etiquetaNivel(t.nivel))}</option>`).join('')}</select>
+    <p class="note" style="margin-top:6px">Al escribir el ciclo se preselecciona la temporalización del nivel deducido (FPB → CFGB, CFGM…).</p>`;
+  openModal('Nuevo cuaderno para un docente', body, [
+    { text: 'Cancelar', cls: 'ghost', action: closeModal },
+    { text: 'Crear', cls: 'primary', action: async () => {
+      const user_id = byId('nc-user').value; if (!user_id) return alert('Elige un docente');
+      const payload = { user_id: Number(user_id), title: byId('nc-title').value.trim() || 'Nuevo cuaderno', ciclo: byId('nc-ciclo').value.trim() };
+      const tid = byId('nc-temp').value; if (tid) payload.temporalizacion_id = Number(tid);
+      const res = await apiFetch('/api/cuaderno', { method: 'POST', body: JSON.stringify(payload) });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); return alert(e.error || 'Error al crear'); }
+      closeModal(); loadAdminCuadernos();
+    } }
+  ]);
+  byId('nc-ciclo').oninput = () => {
+    const n = nivelDesdeCiclo(byId('nc-ciclo').value); if (!n) return;
+    const t = temps.find(x => x.nivel === n); if (t) byId('nc-temp').value = String(t.id);
+  };
 }
 
 async function loadAdminCuadernos() {

@@ -32,14 +32,14 @@ Aplicación web para crear y gestionar **cuadernos docentes interactivos**. Cada
 ### Jefatura
 - Control total sobre todos los cuadernos (ver y editar)
 - Publica y mantiene las **temporalizaciones de centro**
+- Crea **cuadernos asignados a un docente** (panel admin → Cuadernos → *+ Nuevo cuaderno para un docente*), opcionalmente con la temporalización de centro ya aplicada
 - Gestión de usuarios
 - Acceso al panel de administración
 
 ### Docente
-- Control total sobre sus propios cuadernos
-- Puede **ver** los cuadernos de otros docentes en modo lectura
+- Control total sobre sus propios cuadernos (los que crea él y los que le asigna jefatura)
+- **Solo ve sus cuadernos**; los de otros docentes no son visibles ni accesibles
 - Los cuadernos propios aparecen organizados por ciclo formativo
-- Sección "Cuadernos de compañeros" en la pantalla de inicio
 
 ---
 

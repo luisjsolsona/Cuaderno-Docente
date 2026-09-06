@@ -227,8 +227,9 @@ app.get('/api/mis-cuadernos', auth, (req, res) => {
   res.json(list);
 });
 
-// Cuadernos de otros docentes (para docentes en modo lectura)
+// Cuadernos de otros docentes: solo admin/jefatura (los docentes ven únicamente los suyos)
 app.get('/api/otros-cuadernos', auth, (req, res) => {
+  if (!isPrivileged(req.user)) return res.json([]);
   const list = db.prepare(`
     SELECT c.id, c.title, c.ciclo, c.updated_at, c.created_at,
       u.id as owner_id, u.display_name as owner_name, u.username as owner_username,
@@ -241,12 +242,26 @@ app.get('/api/otros-cuadernos', auth, (req, res) => {
   res.json(list);
 });
 
+// Crear cuaderno. Admin/jefatura pueden crearlo para otro docente (user_id) y con una temporalización de centro ya aplicada (temporalizacion_id)
 app.post('/api/cuaderno', auth, (req, res) => {
-  const { title, ciclo } = req.body || {};
+  const { title, ciclo, user_id, temporalizacion_id } = req.body || {};
   const t = String(title || 'Nuevo cuaderno').trim();
   const c = String(ciclo || '').trim();
-  const r = db.prepare("INSERT INTO cuadernos (user_id, title, ciclo) VALUES (?, ?, ?)").run(req.user.id, t, c);
-  res.json({ id: r.lastInsertRowid, title: t, ciclo: c });
+  let owner = req.user.id;
+  if (user_id !== undefined && Number(user_id) !== req.user.id) {
+    if (!isPrivileged(req.user)) return res.status(403).json({ error: 'Solo jefatura puede crear cuadernos para otros docentes' });
+    if (!db.prepare("SELECT id FROM users WHERE id = ?").get(Number(user_id))) return res.status(404).json({ error: 'Docente no encontrado' });
+    owner = Number(user_id);
+  }
+  let state = {};
+  if (temporalizacion_id) {
+    const all = db.prepare("SELECT * FROM temporalizaciones").all().map(parseTemporalizacion);
+    const tc = all.find(x => x.id === Number(temporalizacion_id));
+    if (!tc) return res.status(404).json({ error: 'Temporalización no encontrada' });
+    state = estadoDesdeTemporalizacion(tc, all);
+  }
+  const r = db.prepare("INSERT INTO cuadernos (user_id, title, ciclo, state_json) VALUES (?, ?, ?, ?)").run(owner, t, c, JSON.stringify(state));
+  res.json({ id: r.lastInsertRowid, title: t, ciclo: c, user_id: owner });
 });
 
 // Duplicar cuaderno
@@ -299,10 +314,11 @@ app.put('/api/cuaderno', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// All authenticated users can read any cuaderno (frontend controls read-only)
+// Leer un cuaderno: propietario o admin/jefatura
 app.get('/api/cuaderno/:id', auth, (req, res) => {
   const c = db.prepare("SELECT c.*, u.display_name, u.id as owner_id FROM cuadernos c JOIN users u ON c.user_id = u.id WHERE c.id = ?").get(req.params.id);
   if (!c) return res.status(404).json({ error: 'No encontrado' });
+  if (c.user_id !== req.user.id && !isPrivileged(req.user)) return res.status(403).json({ error: 'Sin permiso' });
   res.json(parseCuaderno(c));
 });
 
@@ -377,6 +393,31 @@ function normalizarTemporalizacion(t) {
   };
   if (!out.inicio && !out.fin && !out.festivos.length && !out.feoes.length && !out.evaluaciones.length) return null;
   return out;
+}
+
+// Construye el state_json inicial de un cuaderno a partir de una temporalización de centro (hereda de la general del mismo curso)
+function estadoDesdeTemporalizacion(t, lista) {
+  let base = null;
+  if ((t.nivel || '').trim()) {
+    const generales = lista.filter(x => !(x.nivel || '').trim());
+    base = generales.find(x => (x.curso || '').trim() === (t.curso || '').trim()) || (generales.length === 1 ? generales[0] : null);
+  }
+  const d = t.data_json || {}, b = base?.data_json || {};
+  const dias = (ini, fin) => {
+    const out = []; const dI = new Date(ini + 'T00:00:00Z'), dF = new Date((fin || ini) + 'T00:00:00Z');
+    for (let x = dI.getTime(); x <= dF.getTime(); x += 86400000) out.push(new Date(x).toISOString().slice(0, 10));
+    return out;
+  };
+  const festivos = new Map(), feoes = new Map(), evaluaciones = new Map();
+  [...(b.festivos || []), ...(d.festivos || [])].forEach(r => dias(r.inicio, r.fin).forEach(x => festivos.set(x, r.motivo || '')));
+  [...(b.feoes || []), ...(d.feoes || [])].forEach(r => dias(r.inicio, r.fin).forEach(x => feoes.set(x, r.empresa || '')));
+  [...(b.evaluaciones || []), ...(d.evaluaciones || [])].forEach(e => evaluaciones.set(e.fecha, { desc: e.desc || 'Evaluación', bloquea: !!e.bloquea }));
+  return {
+    inicio: d.inicio || b.inicio || '', fin: d.fin || b.fin || '',
+    festivos: [...festivos.entries()], feoes: [...feoes.entries()], evaluaciones: [...evaluaciones.entries()],
+    modulos: [], RAs: [], planMap: [], lastAsignaciones: [], planSesiones: [], planSesCounts: [], planLocked: [],
+    centroTemp: { id: t.id, nombre: t.nombre, updated_at: t.updated_at, baseId: base?.id || null, baseUpdatedAt: base?.updated_at || '' }
+  };
 }
 
 function parseTemporalizacion(row) {
