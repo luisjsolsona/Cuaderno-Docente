@@ -130,7 +130,7 @@ El navegador no puede leer `centrosdocentes.catedu.es` directamente (CORS). El s
 
 ## Importar temporalización desde fichero
 
-En la pestaña **Temporalización** → **📥 Importar / exportar temporalización** puedes cargar de golpe los pasos 1–4. Se admiten dos formatos:
+En la pestaña **Temporalización** → tarjeta **📌 Fechas del curso y festivos** → desplegable *Más opciones* puedes cargar de golpe los pasos 1–4 desde un fichero. Se admiten dos formatos:
 
 **CSV** (separador `;`, `,` o tabulador; fechas `AAAA-MM-DD` o `DD/MM/AAAA`):
 

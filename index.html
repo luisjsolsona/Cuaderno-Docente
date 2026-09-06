@@ -561,37 +561,59 @@
           <p class="note">Rellena los pasos 1–6 y pulsa <strong>⚡ Generar calendario</strong>. El resultado se muestra en la pestaña <strong>Calendario</strong>.</p>
           <div class="hr"></div>
 
-          <!-- Import / export temporalización -->
+          <!-- Fechas y festivos: temporalización del centro / calendario oficial / fichero -->
           <div class="card" style="margin-bottom:12px">
-            <h2>📥 Importar / exportar temporalización</h2>
+            <h2>📌 Fechas del curso y festivos</h2>
             <div id="centro-temp-banner" class="readonly-banner" style="display:none"></div>
-            <div class="row" style="align-items:center;flex-wrap:wrap;margin-bottom:8px">
-              <select id="centroTempSel" style="flex:1 1 220px"><option value="">— Temporalización del centro —</option></select>
-              <button class="btn primary" id="aplicarCentroTempBtn">📌 Aplicar del centro</button>
-              <span class="note" id="centroTempInfo" style="flex-basis:100%;margin:0"></span>
+
+            <!-- Opción principal: temporalización del centro -->
+            <div id="centro-temp-block">
+              <div class="row" style="align-items:center;flex-wrap:wrap">
+                <select id="centroTempSel" style="flex:1 1 220px"><option value="">— Temporalización del centro —</option></select>
+                <button class="btn primary" id="aplicarCentroTempBtn">Aplicar</button>
+                <span class="note" id="centroTempInfo" style="flex-basis:100%;margin:0"></span>
+              </div>
+              <p class="note" style="margin-top:6px">Rellena los pasos 1–4 con los datos publicados por jefatura (fechas, festivos y FEOE de tu nivel). Si jefatura los cambia, aquí verás un aviso para actualizar.</p>
             </div>
-            <div class="row" style="align-items:center;flex-wrap:wrap">
-              <button class="btn" id="importTempBtn">📥 Importar fichero (.json / .csv)</button>
-              <select id="importTempModo" title="Qué hacer con los festivos, FEOE y evaluaciones ya existentes" style="flex:0 0 auto">
-                <option value="reemplazar">Al importar: reemplazar existentes</option>
-                <option value="anadir">Al importar: añadir a los existentes</option>
-              </select>
-              <input type="file" id="importTempFile" accept=".json,.csv,.txt,application/json,text/csv" style="display:none" />
-              <span style="display:inline-flex;gap:4px;align-items:center">
-                <button class="btn" id="oficialTempBtn" title="Fechas de curso y festivos oficiales de Aragón 2026-27 (FP presencial)">📅 Cargar calendario oficial 2026-27</button>
-                <select id="oficialTempProv" style="flex:0 0 auto"><option>Zaragoza</option><option>Huesca</option><option>Teruel</option></select>
-              </span>
-              <button class="btn" id="exportTempBtn">📤 Exportar (.json)</button>
-              <button class="btn" id="exportTempCsvBtn">📤 Exportar (.csv)</button>
-              <button class="btn" id="plantillaTempBtn">📄 Plantilla .csv (Zaragoza 2026-27)</button>
+            <!-- Si el centro no ha publicado nada -->
+            <div id="centro-temp-vacio" style="display:none">
+              <div class="row" style="align-items:center;flex-wrap:wrap">
+                <button class="btn primary" id="oficialTempBtn2">📅 Cargar calendario oficial Aragón 2026-27</button>
+                <select id="oficialTempProv2" style="flex:0 0 auto"><option>Zaragoza</option><option>Huesca</option><option>Teruel</option></select>
+              </div>
+              <p class="note" style="margin-top:6px">Jefatura aún no ha publicado la temporalización del centro. Puedes cargar las fechas y festivos oficiales y añadir la FEOE a mano en el paso 3.</p>
             </div>
-            <p class="note" style="margin-top:7px">
-              Carga de golpe las <strong>fechas del curso, festivos, FEOE y evaluaciones</strong> (pasos 1–4). Útil para que jefatura reparta un único fichero al departamento.
-              CSV con columnas <code>tipo;inicio;fin;descripcion;bloquea</code> (tipo: <code>curso</code>, <code>festivo</code>, <code>feoe</code>, <code>evaluacion</code>; fechas <code>AAAA-MM-DD</code> o <code>DD/MM/AAAA</code>).
-              Los rangos (vacaciones) se indican con inicio y fin en una sola fila.
-              <br>📎 Fuente oficial curso 2026-27: <a href="https://educa.aragon.es/documents/20126/2820569/Calendario+Escolar+2026-2027+-+Educaragon.pdf/50447fc8-06ec-56ce-0fb0-3906719f4b18?t=1786103855636" target="_blank" rel="noopener">Calendario escolar 2026-2027 (Educaragon, PDF)</a>
-              · <a href="https://www.boa.aragon.es/cgi-bin/EBOA/BRSCGI?CMD=VEROBJ&MLKOB=1392479120808" target="_blank" rel="noopener">Resolución BOA 12/05/2025</a>.
-            </p>
+
+            <details style="margin-top:10px">
+              <summary style="cursor:pointer;font-size:13px;color:var(--accent);font-weight:600">Más opciones: calendario oficial, importar o exportar fichero</summary>
+              <div style="padding:10px 0 0">
+                <label style="margin-top:0">Calendario oficial de Aragón 2026-27 (fechas de FP presencial y festivos; conserva FEOE y evaluaciones)</label>
+                <div class="row" style="align-items:center">
+                  <button class="btn" id="oficialTempBtn">📅 Cargar</button>
+                  <select id="oficialTempProv" style="flex:0 0 auto"><option>Zaragoza</option><option>Huesca</option><option>Teruel</option></select>
+                </div>
+                <label>Importar desde fichero (.json o .csv)</label>
+                <div class="row" style="align-items:center">
+                  <button class="btn" id="importTempBtn">📥 Elegir fichero</button>
+                  <select id="importTempModo" style="flex:0 0 auto">
+                    <option value="reemplazar">Reemplazar lo actual</option>
+                    <option value="anadir">Añadir a lo actual</option>
+                  </select>
+                  <input type="file" id="importTempFile" accept=".json,.csv,.txt,application/json,text/csv" style="display:none" />
+                </div>
+                <label>Exportar este cuaderno (para compartirlo o guardarlo)</label>
+                <div class="row" style="align-items:center">
+                  <button class="btn" id="exportTempBtn">📤 .json</button>
+                  <button class="btn" id="exportTempCsvBtn">📤 .csv</button>
+                  <button class="btn ghost" id="plantillaTempBtn">📄 Ejemplo .csv</button>
+                </div>
+                <p class="note" style="margin-top:8px">
+                  CSV: <code>tipo;inicio;fin;descripcion;bloquea</code> con tipo <code>curso</code>, <code>festivo</code>, <code>feoe</code> o <code>evaluacion</code>; una fila por rango.
+                  Fuente 2026-27: <a href="https://educa.aragon.es/documents/20126/2820569/Calendario+Escolar+2026-2027+-+Educaragon.pdf/50447fc8-06ec-56ce-0fb0-3906719f4b18?t=1786103855636" target="_blank" rel="noopener">calendario escolar Educaragon</a>
+                  · <a href="https://www.boa.aragon.es/cgi-bin/EBOA/BRSCGI?CMD=VEROBJ&MLKOB=1392479120808" target="_blank" rel="noopener">BOA 12/05/2025</a>.
+                </p>
+              </div>
+            </details>
           </div>
 
           <div class="grid cols-2">
@@ -2510,7 +2532,9 @@ function combinarCentroTemp(t, base) {
 }
 function actualizarInfoCentroTemp() {
   const t = centroTempList.find(x => String(x.id) === byId('centroTempSel').value);
-  if (!t) { byId('centroTempInfo').textContent = centroTempList.length ? '' : 'Jefatura aún no ha publicado ninguna temporalización de centro.'; return; }
+  byId('centro-temp-block').style.display = centroTempList.length ? '' : 'none';
+  byId('centro-temp-vacio').style.display = centroTempList.length ? 'none' : '';
+  if (!t) { byId('centroTempInfo').textContent = ''; return; }
   const base = baseDeCentroTemp(t);
   byId('centroTempInfo').textContent = `${resumenTemp(combinarCentroTemp(t, base))} · actualizada ${fmtFechaHora(t.updated_at)} por ${t.updated_by || '—'}` + (base ? ` · hereda fechas y festivos de "${base.nombre}"` : '');
 }
@@ -2594,8 +2618,7 @@ function temporalizacionOficial(provincia = 'Zaragoza') {
     festivos: [...c.comunes, ...(c.provincias[provincia] || [])].sort((a,b) => a.inicio.localeCompare(b.inicio)),
     feoes: [], evaluaciones: [] };
 }
-byId('oficialTempBtn').onclick = () => {
-  const prov = byId('oficialTempProv').value;
+function cargarCalendarioOficial(prov) {
   const t = normalizarTemporalizacion(temporalizacionOficial(prov));
   const hayDatos = festivos.size || feoes.size || evaluaciones.size;
   if (!confirm(`Se cargará el calendario oficial de Aragón 2026-27 (${prov}):\n${resumenTemp(t)}` +
@@ -2604,7 +2627,9 @@ byId('oficialTempBtn').onclick = () => {
   aplicarTemporalizacion(t, false);
   if (centroTemp) { centroTemp = null; actualizarBannerCentroTemp(); }
   if (calendarRows.length) alert('Calendario oficial cargado. Vuelve a pulsar ⚡ Generar calendario.');
-};
+}
+byId('oficialTempBtn').onclick  = () => cargarCalendarioOficial(byId('oficialTempProv').value);
+byId('oficialTempBtn2').onclick = () => cargarCalendarioOficial(byId('oficialTempProv2').value);
 
 function nombreFicheroTemp(ext) {
   const base = byId('cuaderno-ciclo')?.value || byId('cuaderno-title')?.value || 'cuaderno';
