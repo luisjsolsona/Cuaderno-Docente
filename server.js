@@ -485,6 +485,20 @@ app.delete('/api/temporalizaciones/:id', auth, adminOnly, (req, res) => {
   res.json({ ok: true });
 });
 
+// === RESTABLECER APLICACIÓN (solo admin): borra cuadernos, temporalizaciones, caché y usuarios excepto el admin actual ===
+app.post('/api/admin/reset', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Solo el administrador' });
+  if (String((req.body || {}).confirm || '') !== 'BORRAR TODO') return res.status(400).json({ error: 'Confirmación incorrecta' });
+  const r = db.transaction(() => ({
+    cuadernos: db.prepare("DELETE FROM cuadernos").run().changes,
+    temporalizaciones: db.prepare("DELETE FROM temporalizaciones").run().changes,
+    catedu: db.prepare("DELETE FROM catedu_cache").run().changes,
+    usuarios: db.prepare("DELETE FROM users WHERE id != ?").run(req.user.id).changes
+  }))();
+  try { db.exec("VACUUM"); } catch {}
+  res.json({ ok: true, ...r });
+});
+
 // === PROXY + CACHÉ DE CATEDU (RAs/CEs) ===
 // El navegador no puede leer centrosdocentes.catedu.es por CORS; el servidor sí. Se cachea en SQLite para todo el centro.
 const CATEDU_HOST = 'centrosdocentes.catedu.es';

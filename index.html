@@ -472,7 +472,10 @@
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;flex-wrap:wrap">
             <h2 style="margin:0">Gestión de docentes</h2>
-            <button class="btn primary small" id="btn-add-user">+ Nuevo docente</button>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn ghost small" id="btn-reset-app" style="display:none;color:var(--danger)" onclick="restablecerAplicacion()" title="Borra todos los cuadernos, temporalizaciones, caché y usuarios (excepto tú)">🗑 Restablecer aplicación</button>
+              <button class="btn primary small" id="btn-add-user">+ Nuevo docente</button>
+            </div>
           </div>
           <div class="user-table-wrap">
             <table class="user-table">
@@ -974,6 +977,7 @@ async function showApp() {
   const isPriv = currentUser.role === 'admin' || currentUser.role === 'jefatura';
   if (isPriv) {
     byId('btn-admin-panel').style.display = 'inline-flex';
+    if (byId('btn-reset-app')) byId('btn-reset-app').style.display = currentUser.role === 'admin' ? '' : 'none';
     byId('btn-my-cuaderno').style.display = 'inline-flex';
     showAdminPanel();
   } else {
@@ -1280,6 +1284,23 @@ adminTabs.forEach(tab => {
 
 async function loadAdminData() {
   await loadAdminUsers();
+}
+
+function restablecerAplicacion() {
+  openModal('Restablecer aplicación', `
+    <p style="font-size:13px;margin:0 0 10px">Se borrarán <strong>todos los cuadernos, las temporalizaciones de centro, la caché de CATEDU y todos los usuarios</strong> excepto el tuyo. No se puede deshacer.</p>
+    <label>Escribe <code>BORRAR TODO</code> para confirmar</label>
+    <input type="text" id="reset-confirm" autocomplete="off" />`, [
+    { text: 'Cancelar', cls: 'ghost', action: closeModal },
+    { text: 'Borrar todo', cls: 'danger', action: async () => {
+      const res = await apiFetch('/api/admin/reset', { method: 'POST', body: JSON.stringify({ confirm: byId('reset-confirm').value.trim() }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) return alert(j.error || 'Error');
+      closeModal();
+      alert(`Aplicación restablecida: ${j.cuadernos} cuadernos, ${j.temporalizaciones} temporalizaciones, ${j.usuarios} usuarios y ${j.catedu} páginas de caché borrados.`);
+      loadAdminData();
+    } }
+  ]);
 }
 
 async function loadAdminUsers() {
