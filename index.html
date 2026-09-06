@@ -457,6 +457,22 @@
           <p class="note">Rellena los pasos 1–6 y pulsa <strong>⚡ Generar calendario</strong>. El resultado se muestra en la pestaña <strong>Calendario</strong>.</p>
           <div class="hr"></div>
 
+          <!-- Import / export temporalización -->
+          <div class="card" style="margin-bottom:12px">
+            <h2>📥 Importar / exportar temporalización</h2>
+            <div class="row" style="align-items:center;flex-wrap:wrap">
+              <button class="btn" id="importTempBtn">📥 Importar fichero (.json / .csv)</button>
+              <input type="file" id="importTempFile" accept=".json,.csv,.txt,application/json,text/csv" style="display:none" />
+              <button class="btn" id="exportTempBtn">📤 Exportar (.json)</button>
+              <button class="btn" id="exportTempCsvBtn">📤 Exportar (.csv)</button>
+              <button class="btn" id="plantillaTempBtn">📄 Plantilla .csv</button>
+            </div>
+            <p class="note" style="margin-top:7px">
+              Carga de golpe las <strong>fechas del curso, festivos, FEOE y evaluaciones</strong> (pasos 1–4). Útil para que jefatura reparta un único fichero al departamento.
+              CSV con columnas <code>tipo;inicio;fin;descripcion;bloquea</code> (tipo: <code>curso</code>, <code>festivo</code>, <code>feoe</code>, <code>evaluacion</code>; fechas <code>AAAA-MM-DD</code> o <code>DD/MM/AAAA</code>).
+            </p>
+          </div>
+
           <div class="grid cols-2">
             <!-- Step 1 -->
             <div class="card">
@@ -1983,6 +1999,176 @@ byId('addEval').onclick = () => {
   byId('evalFecha').value = ''; byId('evalDesc').value = ''; byId('evalBloquea').checked = false;
   renderEvals(); scheduleAutoSave();
 };
+// === IMPORT / EXPORT TEMPORALIZACIÓN (fechas, festivos, FEOE, evaluaciones) ===
+function parseFecha(v) {
+  v = String(v || '').trim();
+  let m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m = v.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  return null;
+}
+function rangoDias(ini, fin) {
+  const out = [];
+  const dI = new Date(ini+'T00:00:00'), dF = new Date((fin||ini)+'T00:00:00');
+  if (isNaN(dI) || isNaN(dF) || dF < dI) return out;
+  for (let t = dI.getTime(); t <= dF.getTime(); t += 86400000) out.push(isoDate(new Date(t)));
+  return out;
+}
+// Agrupa días consecutivos con el mismo texto en rangos {inicio, fin, desc}
+function comprimirRangos(map) {
+  const items = Array.from(map.entries()).sort((a,b) => a[0].localeCompare(b[0]));
+  const out = [];
+  for (const [iso, desc] of items) {
+    const last = out[out.length-1];
+    if (last && last.desc === (desc||'') && rangoDias(last.fin, iso).length === 2) last.fin = iso;
+    else out.push({ inicio: iso, fin: iso, desc: desc || '' });
+  }
+  return out;
+}
+function buildTemporalizacion() {
+  return {
+    formato: 'cuaderno-docente-temporalizacion',
+    version: 1,
+    inicio: byId('inicio').value || '',
+    fin: byId('fin').value || '',
+    festivos: comprimirRangos(festivos).map(r => ({ inicio: r.inicio, fin: r.fin, motivo: r.desc })),
+    feoes: comprimirRangos(feoes).map(r => ({ inicio: r.inicio, fin: r.fin, empresa: r.desc })),
+    evaluaciones: Array.from(evaluaciones.entries()).sort((a,b) => a[0].localeCompare(b[0]))
+      .map(([fecha, info]) => ({ fecha, desc: info.desc || 'Evaluación', bloquea: !!info.bloquea }))
+  };
+}
+function descargarTexto(nombre, contenido, mime) {
+  const blob = new Blob([contenido], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = nombre; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function temporalizacionACsv(t) {
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const lines = ['tipo;inicio;fin;descripcion;bloquea'];
+  if (t.inicio || t.fin) lines.push(['curso', t.inicio, t.fin, 'Curso', ''].map(q).join(';'));
+  t.festivos.forEach(r => lines.push(['festivo', r.inicio, r.fin, r.motivo, ''].map(q).join(';')));
+  t.feoes.forEach(r => lines.push(['feoe', r.inicio, r.fin, r.empresa, ''].map(q).join(';')));
+  t.evaluaciones.forEach(e => lines.push(['evaluacion', e.fecha, e.fecha, e.desc, e.bloquea ? 'si' : 'no'].map(q).join(';')));
+  return '\uFEFF' + lines.join('\r\n');
+}
+function parseCsvLinea(line, sep) {
+  const out = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"' && line[i+1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false;
+      else cur += ch;
+    } else if (ch === '"') inQ = true;
+    else if (ch === sep) { out.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out.map(x => x.trim());
+}
+// CSV -> objeto temporalización (misma estructura que el JSON)
+function csvATemporalizacion(text) {
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+  if (!lines.length) throw new Error('Fichero vacío');
+  const sep = [';', ',', '\t'].sort((a,b) => (lines[0].split(b).length) - (lines[0].split(a).length))[0];
+  let head = parseCsvLinea(lines[0], sep).map(h => h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+  let start = 1;
+  const idx = { tipo: head.indexOf('tipo'), inicio: head.indexOf('inicio'), fin: head.indexOf('fin'),
+                desc: head.findIndex(h => ['descripcion','motivo','empresa','desc'].includes(h)), bloquea: head.indexOf('bloquea') };
+  if (idx.tipo < 0) { // sin cabecera: orden fijo
+    Object.assign(idx, { tipo: 0, inicio: 1, fin: 2, desc: 3, bloquea: 4 }); start = 0;
+  }
+  const t = { inicio: '', fin: '', festivos: [], feoes: [], evaluaciones: [] };
+  const errores = [];
+  for (let i = start; i < lines.length; i++) {
+    const c = parseCsvLinea(lines[i], sep);
+    const tipo = (c[idx.tipo] || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const ini = parseFecha(c[idx.inicio]);
+    const fin = parseFecha(c[idx.fin]) || ini;
+    const desc = idx.desc >= 0 ? (c[idx.desc] || '') : '';
+    const bloq = idx.bloquea >= 0 ? /^(s|si|sí|1|true|x|yes)$/i.test(c[idx.bloquea] || '') : false;
+    if (!tipo) continue;
+    if (!ini) { errores.push(`Línea ${i+1}: fecha no válida`); continue; }
+    if (tipo === 'curso') { t.inicio = ini; t.fin = fin; }
+    else if (tipo === 'festivo') t.festivos.push({ inicio: ini, fin, motivo: desc });
+    else if (tipo === 'feoe') t.feoes.push({ inicio: ini, fin, empresa: desc });
+    else if (tipo === 'evaluacion' || tipo === 'eval') t.evaluaciones.push({ fecha: ini, desc: desc || 'Evaluación', bloquea: bloq });
+    else errores.push(`Línea ${i+1}: tipo desconocido "${c[idx.tipo]}"`);
+  }
+  if (errores.length) throw new Error(errores.slice(0,5).join('\n') + (errores.length > 5 ? `\n… (+${errores.length-5})` : ''));
+  return t;
+}
+function normalizarTemporalizacion(t) {
+  if (!t || typeof t !== 'object') throw new Error('Formato no reconocido');
+  const norm = { inicio: parseFecha(t.inicio) || '', fin: parseFecha(t.fin) || '', festivos: [], feoes: [], evaluaciones: [] };
+  const addRange = (arr, key) => (t[key] || []).forEach(r => {
+    if (Array.isArray(r)) { const d = parseFecha(r[0]); if (d) arr.push({ inicio: d, fin: d, desc: r[1] || '' }); return; } // formato state_json
+    const ini = parseFecha(r.inicio || r.fecha), fin = parseFecha(r.fin) || ini;
+    if (ini) arr.push({ inicio: ini, fin, desc: r.motivo || r.empresa || r.desc || '' });
+  });
+  addRange(norm.festivos, 'festivos'); addRange(norm.feoes, 'feoes');
+  (t.evaluaciones || []).forEach(e => {
+    if (Array.isArray(e)) { const d = parseFecha(e[0]); if (d) norm.evaluaciones.push({ fecha: d, desc: e[1]?.desc || 'Evaluación', bloquea: !!e[1]?.bloquea }); return; }
+    const d = parseFecha(e.fecha || e.inicio); if (d) norm.evaluaciones.push({ fecha: d, desc: e.desc || 'Evaluación', bloquea: !!e.bloquea });
+  });
+  return norm;
+}
+function aplicarTemporalizacion(t, reemplazar) {
+  if (reemplazar) { festivos.clear(); feoes.clear(); evaluaciones.clear(); }
+  if (t.inicio) byId('inicio').value = t.inicio;
+  if (t.fin) byId('fin').value = t.fin;
+  t.festivos.forEach(r => rangoDias(r.inicio, r.fin).forEach(d => festivos.set(d, r.desc)));
+  t.feoes.forEach(r => rangoDias(r.inicio, r.fin).forEach(d => feoes.set(d, r.desc)));
+  t.evaluaciones.forEach(e => evaluaciones.set(e.fecha, { desc: e.desc, bloquea: e.bloquea }));
+  renderFestivos(); renderFeoes(); renderEvals(); scheduleAutoSave();
+}
+byId('importTempBtn').onclick = () => byId('importTempFile').click();
+byId('importTempFile').onchange = async (ev) => {
+  const file = ev.target.files?.[0]; ev.target.value = '';
+  if (!file) return;
+  try {
+    const text = await file.text();
+    let t;
+    if (/^\s*[\[{]/.test(text)) t = normalizarTemporalizacion(JSON.parse(text));
+    else t = normalizarTemporalizacion(csvATemporalizacion(text));
+    const nFest = t.festivos.reduce((a,r) => a + rangoDias(r.inicio, r.fin).length, 0);
+    const nFeoe = t.feoes.reduce((a,r) => a + rangoDias(r.inicio, r.fin).length, 0);
+    const resumen = `Fechas curso: ${t.inicio || '—'} → ${t.fin || '—'}\nFestivos: ${nFest} días\nFEOE: ${nFeoe} días\nEvaluaciones: ${t.evaluaciones.length}`;
+    const hayDatos = festivos.size || feoes.size || evaluaciones.size;
+    let reemplazar = true;
+    if (hayDatos) {
+      reemplazar = confirm(`Se importará:\n${resumen}\n\nAceptar = REEMPLAZAR festivos, FEOE y evaluaciones actuales.\nCancelar = AÑADIR a los existentes.`);
+    } else if (!confirm(`Se importará:\n${resumen}\n\n¿Continuar?`)) return;
+    aplicarTemporalizacion(t, reemplazar);
+  } catch (e) {
+    alert('No se pudo importar el fichero:\n' + (e.message || e));
+  }
+};
+byId('exportTempBtn').onclick = () => {
+  const t = buildTemporalizacion();
+  const nombre = (byId('cuaderno-ciclo')?.value || 'temporalizacion').replace(/[^\w\-]+/g, '_');
+  descargarTexto(`temporalizacion_${nombre}.json`, JSON.stringify(t, null, 2), 'application/json');
+};
+byId('exportTempCsvBtn').onclick = () => {
+  const t = buildTemporalizacion();
+  const nombre = (byId('cuaderno-ciclo')?.value || 'temporalizacion').replace(/[^\w\-]+/g, '_');
+  descargarTexto(`temporalizacion_${nombre}.csv`, temporalizacionACsv(t), 'text/csv;charset=utf-8');
+};
+byId('plantillaTempBtn').onclick = () => {
+  const csv = '\uFEFF' + [
+    'tipo;inicio;fin;descripcion;bloquea',
+    'curso;15/09/2026;23/06/2027;Curso 2026-2027;',
+    'festivo;12/10/2026;;Fiesta Nacional;',
+    'festivo;23/12/2026;07/01/2027;Navidad;',
+    'feoe;15/03/2027;11/06/2027;FEOE 2º curso;',
+    'evaluacion;18/12/2026;;1ª Evaluación;si',
+    'evaluacion;26/03/2027;;2ª Evaluación;no'
+  ].join('\r\n');
+  descargarTexto('plantilla_temporalizacion.csv', csv, 'text/csv;charset=utf-8');
+};
+
 byId('addModulo').onclick = () => {
   const n = byId('moduloNombre').value.trim(), dow = Number(byId('moduloDia').value);
   const ini = byId('moduloInicio').value, fin = byId('moduloFin').value;
