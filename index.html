@@ -1532,7 +1532,7 @@ async function loadAdminTemporalizaciones() {
   tb.innerHTML = adminTempList.map(t => `<tr>
     <td><strong>${esc(t.nombre)}</strong></td>
     <td>${esc(t.curso || '—')}</td>
-    <td>${esc(t.ciclo || '(todos)')}</td>
+    <td>${esc(t.ciclo || '(general)')}</td>
     <td style="font-size:12px">${esc(resumenTemp(t.data_json))}</td>
     <td style="font-size:12px">${esc(fmtFechaHora(t.updated_at))}<br><span style="color:var(--muted)">${esc(t.updated_by || '')}</span></td>
     <td style="white-space:nowrap">
@@ -1563,8 +1563,9 @@ async function formTemporalizacionCentro(t) {
     <label>Nombre *</label><input type="text" id="tc-nombre" value="${esc(t?.nombre || '')}" placeholder="p. ej. Calendario escolar 2026-27" />
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <div style="flex:1 1 120px"><label>Curso</label><input type="text" id="tc-curso" value="${esc(t?.curso || '')}" placeholder="2026-27" /></div>
-      <div style="flex:1 1 160px"><label>Ciclo (opcional)</label><input type="text" id="tc-ciclo" value="${esc(t?.ciclo || '')}" placeholder="Vacío = todos los ciclos" /></div>
+      <div style="flex:1 1 160px"><label>Ciclo (opcional)</label><input type="text" id="tc-ciclo" value="${esc(t?.ciclo || '')}" placeholder="Vacío = general (todos)" /></div>
     </div>
+    <p class="note" style="margin-top:4px">Crea <strong>una general</strong> (ciclo vacío) con las fechas del curso y los festivos, iguales para todos. Las de <strong>ciclo</strong> solo necesitan la FEOE y evaluaciones propias: al aplicarlas heredan las fechas y festivos de la general del mismo curso.</p>
     <label style="margin-top:8px">Contenido (fechas, festivos, FEOE, evaluaciones)</label>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="btn small" id="tc-file-btn">📥 Desde fichero (.json / .csv)</button>
@@ -2327,9 +2328,27 @@ async function loadCentroTemporalizaciones() {
   actualizarInfoCentroTemp();
   actualizarBannerCentroTemp();
 }
+// La temporalización general (sin ciclo) del mismo curso: aporta fechas de curso y festivos a las de ciclo
+function baseDeCentroTemp(t, lista = centroTempList) {
+  if (!t || !(t.ciclo || '').trim()) return null;
+  const generales = lista.filter(x => !(x.ciclo || '').trim());
+  return generales.find(x => (x.curso || '').trim() === (t.curso || '').trim()) || (generales.length === 1 ? generales[0] : null);
+}
+// Combina general + ciclo: la de ciclo solo añade (FEOE, evaluaciones, festivos extra)
+function combinarCentroTemp(t, base) {
+  const d = t.data_json || {}, b = base?.data_json || {};
+  return {
+    inicio: d.inicio || b.inicio || '', fin: d.fin || b.fin || '',
+    festivos: [...(b.festivos || []), ...(d.festivos || [])],
+    feoes: [...(b.feoes || []), ...(d.feoes || [])],
+    evaluaciones: [...(b.evaluaciones || []), ...(d.evaluaciones || [])]
+  };
+}
 function actualizarInfoCentroTemp() {
   const t = centroTempList.find(x => String(x.id) === byId('centroTempSel').value);
-  byId('centroTempInfo').textContent = t ? `${resumenTemp(t.data_json)} · actualizada ${fmtFechaHora(t.updated_at)} por ${t.updated_by || '—'}` : (centroTempList.length ? '' : 'Jefatura aún no ha publicado ninguna temporalización de centro.');
+  if (!t) { byId('centroTempInfo').textContent = centroTempList.length ? '' : 'Jefatura aún no ha publicado ninguna temporalización de centro.'; return; }
+  const base = baseDeCentroTemp(t);
+  byId('centroTempInfo').textContent = `${resumenTemp(combinarCentroTemp(t, base))} · actualizada ${fmtFechaHora(t.updated_at)} por ${t.updated_by || '—'}` + (base ? ` · hereda fechas y festivos de "${base.nombre}"` : '');
 }
 function actualizarBannerCentroTemp() {
   const b = byId('centro-temp-banner'); if (!b) return;
@@ -2338,8 +2357,10 @@ function actualizarBannerCentroTemp() {
   const actual = centroTempList.find(t => t.id === centroTemp.id);
   if (!actual) {
     b.innerHTML = `⚠ Este cuaderno usaba la temporalización de centro <strong>${esc(centroTemp.nombre || '')}</strong>, que ya no existe.`;
-  } else if (actual.updated_at !== centroTemp.updated_at) {
-    b.innerHTML = `🔔 La temporalización de centro <strong>${esc(actual.nombre)}</strong> se actualizó el ${esc(fmtFechaHora(actual.updated_at))} (este cuaderno tiene la del ${esc(fmtFechaHora(centroTemp.updated_at))}). `;
+  } else if (actual.updated_at !== centroTemp.updated_at || (baseDeCentroTemp(actual)?.updated_at || '') !== (centroTemp.baseUpdatedAt || '')) {
+    const base = baseDeCentroTemp(actual);
+    const cambiada = actual.updated_at !== centroTemp.updated_at ? actual : base;
+    b.innerHTML = `🔔 La temporalización de centro <strong>${esc(cambiada?.nombre || actual.nombre)}</strong> se actualizó el ${esc(fmtFechaHora(cambiada?.updated_at))}; este cuaderno tiene una versión anterior. `;
     if (currentCuadernoEditable) {
       const btn = document.createElement('button'); btn.className = 'btn primary small'; btn.textContent = '🔄 Actualizar ahora';
       btn.onclick = () => aplicarCentroTemp(actual);
@@ -2354,12 +2375,14 @@ function actualizarBannerCentroTemp() {
 function aplicarCentroTemp(t) {
   if (!t) return;
   const hayDatos = festivos.size || feoes.size || evaluaciones.size;
-  const msg = `Se aplicará "${t.nombre}":\n${resumenTemp(t.data_json)}` +
+  const base = baseDeCentroTemp(t);
+  const combinada = combinarCentroTemp(t, base);
+  const msg = `Se aplicará "${t.nombre}"${base ? ` + festivos de "${base.nombre}"` : ''}:\n${resumenTemp(combinada)}` +
     (hayDatos ? '\n\n⚠ Se REEMPLAZARÁN los festivos, FEOE y evaluaciones actuales de este cuaderno (la fuente de verdad es la del centro).' : '') +
     '\n\n¿Continuar?';
   if (!confirm(msg)) return;
-  aplicarTemporalizacion(normalizarTemporalizacion(t.data_json), true);
-  centroTemp = { id: t.id, nombre: t.nombre, updated_at: t.updated_at };
+  aplicarTemporalizacion(normalizarTemporalizacion(combinada), true);
+  centroTemp = { id: t.id, nombre: t.nombre, updated_at: t.updated_at, baseId: base?.id || null, baseUpdatedAt: base?.updated_at || '' };
   scheduleAutoSave();
   actualizarBannerCentroTemp();
   if (calendarRows.length) alert('Temporalización aplicada. Vuelve a pulsar ⚡ Generar calendario para actualizar el calendario.');
