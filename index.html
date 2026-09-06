@@ -108,8 +108,18 @@
     thead th { position: sticky; top: 0; background: #f8fafc; z-index: 2; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
     td { padding: 8px 10px; font-size: 13px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
     tbody tr:hover { background: #fafbff; }
-    tbody tr.holiday { background: #fff7f7; }
+    tbody tr.holiday { background: #fff7f7; color: var(--muted); }
     tbody tr.feoe-row { background: var(--feoe-bg); }
+    /* Día con clase: borde verde y fondo; día sin clase: atenuado */
+    tbody tr.clase-row { background: #f0fdf4; border-left: 4px solid #10b981; }
+    tbody tr.clase-row td { border-bottom-color: #d1fae5; }
+    tbody tr.clase-row td.c-fecha, tbody tr.clase-row td.c-mod { font-weight: 700; color: #065f46; }
+    tbody tr.clase-row td.c-ini, tbody tr.clase-row td.c-fin, tbody tr.clase-row td.c-horas { font-weight: 600; }
+    tbody tr.clase-row:hover { background: #dcfce7; }
+    tbody tr.vacio-row { background: #fafafa; color: #9ca3af; font-size: 12px; }
+    tbody tr.vacio-row td { padding-top: 4px; padding-bottom: 4px; }
+    tbody tr.vacio-row td.c-fecha { color: #9ca3af; }
+    tbody tr.holiday td.c-fecha, tbody tr.feoe-row td.c-fecha { font-weight: 600; }
 
     /* === BADGES === */
     .badge { border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
@@ -360,7 +370,12 @@
       /* Calendario: cada fila como una tarjeta en vez de una tabla de 9 columnas */
       #tabla thead { display: none; }
       #tabla, #tabla tbody, #tabla tr { display: block; width: 100%; }
-      #tabla tr { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+      #tabla tr { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); border-left: 4px solid transparent; }
+      #tabla tr.clase-row { border-left-color: #10b981; }
+      #tabla tr.holiday { border-left-color: #fca5a5; }
+      #tabla tr.feoe-row { border-left-color: #c4b5fd; }
+      #tabla tr.vacio-row { padding: 6px 12px; }
+      #tabla tr.vacio-row td.c-obs, #tabla tr.vacio-row td.c-ra { display: none; }
       #tabla td { display: inline; padding: 0; border: none; font-size: 13px; }
       #tabla td.c-fecha { font-weight: 700; }
       #tabla td.c-dia { color: var(--muted); }
@@ -1130,6 +1145,19 @@ function buildCuadernoCard(c, { editable = true } = {}) {
     </div>
     ${badges.length ? `<div class="home-card-badges">${badges.join('')}</div>` : ''}
   `;
+  const quick = document.createElement('div');
+  quick.style.cssText = 'display:flex;gap:6px;margin-top:6px;flex-wrap:wrap';
+  const mk = (txt, tab, on) => {
+    const b = document.createElement('button');
+    b.className = 'btn ghost small'; b.textContent = txt;
+    if (!on) { b.disabled = true; b.style.opacity = '.45'; b.title = 'Todavía no generado'; }
+    b.onclick = e => { e.stopPropagation(); openCuaderno(c.id, editable, tab); };
+    quick.appendChild(b);
+  };
+  mk('🧠 Planificación', 'planificacion', !!c.has_plan);
+  mk('📆 Calendario', 'calendario', !!c.has_calendar);
+  mk('📋 Seguimiento', 'seguimiento', !!c.has_calendar);
+  card.appendChild(quick);
   if (editable) {
     const actions = document.createElement('div');
     actions.style.cssText = 'display:flex;gap:6px;margin-top:4px';
@@ -1235,7 +1263,7 @@ async function createNewCuaderno() {
   }
 }
 
-async function openCuaderno(id, editable = true) {
+async function openCuaderno(id, editable = true, tab = 'temporalizacion') {
   resetDocenteState();
   currentCuadernoId = id;
   currentCuadernoEditable = editable;
@@ -1245,6 +1273,7 @@ async function openCuaderno(id, editable = true) {
   showDocTab('temporalizacion');
   setFormReadOnly(!editable);
   await loadCuadernoFromServer(id);
+  if (tab !== 'temporalizacion') showDocTab(tab);
 }
 
 function setFormReadOnly(ro) {
@@ -3249,8 +3278,8 @@ function renderCalendarFromRows(rows) {
     if (r.tipo==='festivo') { badge='<span class="badge badge-festivo">Festivo</span>'; cls='holiday'; }
     else if (r.tipo==='eval') { badge='<span class="badge badge-eval">Evaluación</span>'; cls='holiday'; }
     else if (r.tipo==='feoe') { badge='<span class="badge badge-feoe">FEOE</span>'; cls='feoe-row'; }
-    else if (r.tipo==='clase') badge='<span class="badge badge-clase">Clase</span>';
-    else badge='<span class="muted">—</span>';
+    else if (r.tipo==='clase') { badge='<span class="badge badge-clase">Clase</span>'; cls='clase-row'; }
+    else { badge='<span class="muted">—</span>'; cls='vacio-row'; }
     if (cls) tr.classList.add(cls);
 
     const obsInput = document.createElement('textarea');

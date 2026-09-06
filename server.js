@@ -227,7 +227,7 @@ app.get('/api/mis-cuadernos', auth, (req, res) => {
     SELECT id, title, ciclo, updated_at, created_at,
       CASE WHEN state_json != '{}' AND state_json != '' THEN 1 ELSE 0 END as has_state,
       CASE WHEN calendar_json != '[]' AND calendar_json != '' THEN 1 ELSE 0 END as has_calendar,
-      CASE WHEN plan_json != '{}' AND plan_json != '' THEN 1 ELSE 0 END as has_plan
+      CASE WHEN (plan_json != '{}' AND plan_json != '') OR state_json LIKE '%"lastAsignaciones":[{%' THEN 1 ELSE 0 END as has_plan
     FROM cuadernos WHERE user_id = ? ORDER BY ciclo, updated_at DESC
   `).all(req.user.id);
   res.json(list);
