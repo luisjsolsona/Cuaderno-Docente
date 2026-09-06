@@ -587,7 +587,7 @@
               <p class="note" style="margin-top:6px">Jefatura aún no ha publicado la temporalización del centro. Puedes cargar las fechas y festivos oficiales y añadir la FEOE a mano en el paso 3.</p>
             </div>
 
-            <details style="margin-top:10px">
+            <details id="centro-temp-more" style="margin-top:10px">
               <summary style="cursor:pointer;font-size:13px;color:var(--accent);font-weight:600">Más opciones: calendario oficial, importar o exportar fichero</summary>
               <div style="padding:10px 0 0">
                 <label style="margin-top:0">Calendario oficial de Aragón 2026-27 (fechas de FP presencial y festivos; conserva FEOE y evaluaciones)</label>
@@ -2069,11 +2069,12 @@ let planMap = new Map(), lastAsignaciones = [], ceTempList = [], pendingImport =
 let planSesiones = [], planSesCounts = [], planLocked = [];
 let calendarRows = [];
 let centroTemp = null;   // { id, nombre, updated_at } de la temporalización de centro aplicada
+let moduloNombreFijo = ''; // nombre del módulo elegido en CATEDU: el cuaderno es de ese módulo y no se cambia
 let centroTempList = []; // caché de /api/temporalizaciones
 
 function resetDocenteState() {
   currentCuadernoId = null;
-  centroTemp = null;
+  centroTemp = null; moduloNombreFijo = ''; setModuloNombreFijo('');
   seguimientoData = {};
   festivos.clear(); feoes.clear(); evaluaciones.clear();
   modulos.splice(0); RAs.splice(0); planMap = new Map();
@@ -2101,8 +2102,15 @@ function getState() {
     planSesiones: planSesiones,
     planSesCounts: planSesCounts,
     planLocked: planLocked,
-    centroTemp: centroTemp
+    centroTemp: centroTemp,
+    moduloNombre: moduloNombreFijo
   };
+}
+function setModuloNombreFijo(nombre) {
+  moduloNombreFijo = nombre || '';
+  const inp = byId('moduloNombre'); if (!inp) return;
+  if (moduloNombreFijo) { inp.value = moduloNombreFijo; inp.readOnly = true; inp.title = 'Módulo del cuaderno (elegido en CATEDU)'; inp.style.background = '#eef2ff'; }
+  else { inp.readOnly = false; inp.title = ''; inp.style.background = ''; }
 }
 
 function restoreState(s) {
@@ -2127,7 +2135,7 @@ function restoreState(s) {
   planSesCounts  = Array.isArray(s.planSesCounts) ? s.planSesCounts : [];
   planLocked     = Array.isArray(s.planLocked)    ? s.planLocked    : [];
   centroTemp     = (s.centroTemp && typeof s.centroTemp === 'object') ? s.centroTemp : null;
-  if (s.moduloNombre && !modulos.length && byId('moduloNombre')) byId('moduloNombre').value = s.moduloNombre; // módulo elegido por jefatura, falta horario
+  setModuloNombreFijo(s.moduloNombre || '');
   renderFestivos(); renderFeoes(); renderEvals(); renderModulos(); renderRAs();
   isLoading = false;
 }
@@ -2576,8 +2584,13 @@ function actualizarInfoCentroTemp() {
 function actualizarBannerCentroTemp() {
   const b = byId('centro-temp-banner'); if (!b) return;
   b.style.display = 'none'; b.innerHTML = ''; b.style.background = ''; b.style.borderColor = ''; b.style.color = '';
+  // Con una temporalización aplicada, el selector y "Más opciones" se ocultan; "Cambiar…" los vuelve a mostrar
+  const block = byId('centro-temp-block'), more = byId('centro-temp-more');
+  const mostrarOpciones = v => { if (block) block.style.display = v && centroTempList.length ? '' : 'none'; if (more) more.style.display = v ? '' : 'none'; };
+  mostrarOpciones(true);
   if (!centroTemp) return;
   const actual = centroTempList.find(t => t.id === centroTemp.id);
+  const btnCambiar = () => { const x = document.createElement('button'); x.className = 'btn ghost small'; x.textContent = 'Cambiar…'; x.style.marginLeft = 'auto'; x.onclick = () => { mostrarOpciones(true); x.remove(); }; return x; };
   if (!actual) {
     b.innerHTML = `⚠ Este cuaderno usaba la temporalización de centro <strong>${esc(centroTemp.nombre || '')}</strong>, que ya no existe.`;
   } else if (actual.updated_at !== centroTemp.updated_at || (baseDeCentroTemp(actual)?.updated_at || '') !== (centroTemp.baseUpdatedAt || '')) {
@@ -2593,6 +2606,7 @@ function actualizarBannerCentroTemp() {
     b.innerHTML = `📌 Temporalización de centro aplicada: <strong>${esc(actual.nombre)}</strong> (${esc(fmtFechaHora(actual.updated_at))}). Está al día.`;
     b.style.background = '#ecfdf5'; b.style.borderColor = '#6ee7b7'; b.style.color = '#065f46';
   }
+  if (actual) { mostrarOpciones(false); if (currentCuadernoEditable) b.appendChild(btnCambiar()); }
   b.style.display = 'flex';
 }
 function aplicarCentroTemp(t) {
@@ -2704,7 +2718,7 @@ byId('addModulo').onclick = () => {
   if (!ini || !fin) return alert('Indica horas');
   if (parseHM(fin) <= parseHM(ini)) return alert('Hora fin debe ser > inicio');
   modulos.push({ nombre: n, dow, inicio: ini, fin });
-  byId('moduloNombre').value = '';
+  if (!moduloNombreFijo) byId('moduloNombre').value = '';
   renderModulos(); scheduleAutoSave();
 };
 byId('limpiarTodo').onclick = () => {
@@ -3103,7 +3117,7 @@ function applyImport() {
     const nivel = nivelDesdeCiclo(cic.grado) || nivelDesdeCiclo(cic.nombre) || nivelDesdeCodigoCiclo(cic.cod);
     byId('cuaderno-title').value = `${mod.cod} ${mod.nombre}`.trim();
     byId('cuaderno-ciclo').value = [nivel, cic.nombre].filter(Boolean).join(' ');
-    byId('moduloNombre').value = mod.nombre;      // paso 5: solo falta día y horario
+    setModuloNombreFijo(mod.nombre);              // paso 5: solo falta día y horario
     importOnboarding = false;
     scheduleAutoSave(); closeImportModal();
     onboardingPaso2();
