@@ -244,6 +244,12 @@
     .home-card-icon { width: 44px; height: 44px; border-radius: 12px; background: #dbeafe; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
     .home-card-title { font-weight: 700; font-size: 15px; }
     .home-card-meta { font-size: 12px; color: var(--muted); }
+    .home-card-quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+    .home-card-quick .btn { justify-content: center; background: #eff6ff; border-color: #bfdbfe; color: var(--accent); font-weight: 600; }
+    .home-card-quick .btn:disabled { background: var(--bg); border-color: var(--border); color: var(--muted); font-weight: 500; }
+    .home-card-actions { display: flex; justify-content: flex-end; gap: 4px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); }
+    .home-card-actions .btn-link { font-size: 12px; color: var(--muted); }
+    .home-card-actions .btn-link:hover { background: var(--bg); color: var(--ink); }
     .home-card-badges { display: flex; gap: 5px; flex-wrap: wrap; }
     .tab-empty { text-align: center; padding: 60px 20px; color: var(--muted); }
     .tab-empty-icon { font-size: 48px; margin-bottom: 12px; }
@@ -394,6 +400,10 @@
 
       /* Tarjetas, modales y paneles admin */
       .home-grid { grid-template-columns: 1fr; }
+      .home-card-quick { grid-template-columns: 1fr; gap: 8px; }
+      .home-card-quick .btn { min-height: 44px; font-size: 14px; }
+      .home-card-actions { justify-content: space-between; }
+      .home-card-actions .btn-link { min-height: 40px; font-size: 13px; padding: 6px 12px; }
       .cuaderno-card { flex-wrap: wrap; }
       .cuaderno-card > div:last-child { flex-basis: 100%; justify-content: flex-start !important; }
       .modal { padding: 18px; max-height: 92vh; overflow-y: auto; }
@@ -1146,10 +1156,10 @@ function buildCuadernoCard(c, { editable = true } = {}) {
     ${badges.length ? `<div class="home-card-badges">${badges.join('')}</div>` : ''}
   `;
   const quick = document.createElement('div');
-  quick.style.cssText = 'display:flex;gap:6px;margin-top:6px;flex-wrap:wrap';
+  quick.className = 'home-card-quick';
   const mk = (txt, tab, on) => {
     const b = document.createElement('button');
-    b.className = 'btn ghost small'; b.textContent = txt;
+    b.className = 'btn small'; b.textContent = txt;
     if (!on) { b.disabled = true; b.style.opacity = '.45'; b.title = 'Todavía no generado'; }
     b.onclick = e => { e.stopPropagation(); openCuaderno(c.id, editable, tab); };
     quick.appendChild(b);
@@ -1160,14 +1170,14 @@ function buildCuadernoCard(c, { editable = true } = {}) {
   card.appendChild(quick);
   if (editable) {
     const actions = document.createElement('div');
-    actions.style.cssText = 'display:flex;gap:6px;margin-top:4px';
+    actions.className = 'home-card-actions';
     const dupBtn = document.createElement('button');
-    dupBtn.className = 'btn ghost small';
-    dupBtn.textContent = '📋 Duplicar';
+    dupBtn.className = 'btn-link';
+    dupBtn.textContent = '⧉ Duplicar';
     dupBtn.onclick = e => { e.stopPropagation(); duplicarCuaderno(c.id, c.title); };
     const delBtn = document.createElement('button');
-    delBtn.className = 'btn ghost small';
-    delBtn.style.cssText = 'color:var(--danger);border-color:var(--danger)';
+    delBtn.className = 'btn-link';
+    delBtn.style.cssText = 'color:var(--danger)';
     delBtn.textContent = '🗑 Eliminar';
     delBtn.onclick = e => { e.stopPropagation(); deleteMiCuaderno(c.id, c.title || 'Mi Cuaderno'); };
     actions.appendChild(dupBtn);
