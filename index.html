@@ -1996,7 +1996,7 @@ function applyAdminSeguimientoFilter() {
 function renderAdminSeguimientoCard(c, container) {
   const s       = c.state_json       || {};
   const seg     = c.seguimiento_json || {};
-  const modList = s.modulos || [];
+  const modList = modulosUnicos(s.modulos || []);
   const ini = s.inicio, fin = s.fin;
 
   const wrap = document.createElement('div');
@@ -3666,6 +3666,11 @@ function getMonthRange(ini, fin) {
   return months;
 }
 
+// Nombres de módulo únicos: un módulo con varias franjas semanales es UN módulo (un solo seguimiento)
+function modulosUnicos(lista) {
+  const vistos = new Set();
+  return (lista || []).filter(m => { const n = (m.nombre || '').trim(); if (!n || vistos.has(n)) return false; vistos.add(n); return true; });
+}
 function renderSeguimiento() {
   const container = byId('seguimientoContent');
   if (!container) return;
@@ -3681,7 +3686,7 @@ function renderSeguimiento() {
     monthHeader.className = 'seg-month-header';
     monthHeader.textContent = '📅 ' + label;
     container.appendChild(monthHeader);
-    modulos.forEach(m => {
+    modulosUnicos(modulos).forEach(m => {
       const key = `${m.nombre}_${year}-${String(month+1).padStart(2,'0')}`;
       const card = document.createElement('div');
       card.className = 'seg-card';
