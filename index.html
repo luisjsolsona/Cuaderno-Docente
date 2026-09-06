@@ -304,7 +304,10 @@
     @media (max-width: 640px) {
       .wrap { padding-left: 10px; padding-right: 10px; }
       .card { padding: 14px; border-radius: 12px; }
-      /* Cabecera en dos líneas: logo + estado arriba, usuario/botones abajo con scroll horizontal */
+      h1 { font-size: 18px; }
+
+      /* Cabecera en dos líneas: logo + estado arriba; usuario y botones abajo con scroll horizontal */
+      #app-header { position: static; } /* la cabecera deja de ser fija: las pestañas ocupan su sitio al hacer scroll */
       .header-inner { height: auto; min-height: 52px; flex-wrap: wrap; gap: 6px 10px; padding: 6px 10px; }
       .header-logo { font-size: 15px; }
       .header-logo svg { width: 26px; height: 26px; }
@@ -312,24 +315,70 @@
       .header-user::-webkit-scrollbar { display: none; }
       .header-user strong { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
       .btn-link { padding: 6px 8px; }
-      /* Pestañas con scroll horizontal en vez de desbordar */
-      .doc-tabs, .admin-tabs { overflow-x: auto; white-space: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+
+      /* Pestañas: scroll horizontal y fijas bajo la cabecera */
+      .doc-tabs, .admin-tabs { overflow-x: auto; white-space: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; background: var(--bg); position: sticky; top: 0; z-index: 50; }
       .doc-tabs::-webkit-scrollbar, .admin-tabs::-webkit-scrollbar { display: none; }
       .doc-tab, .admin-tab { padding: 10px 12px; font-size: 13px; flex-shrink: 0; }
-      /* 16px evita el zoom automático de iOS al enfocar un campo */
+      .import-steps { overflow-x: auto; white-space: nowrap; padding: 10px 14px; scrollbar-width: none; }
+      .import-steps::-webkit-scrollbar { display: none; }
+      .import-step { flex-shrink: 0; }
+
+      /* Campos: 16px evita el zoom automático de iOS; objetivos táctiles de 44px */
       input, select, textarea { font-size: 16px; }
+      input:not([type=checkbox]), select { min-height: 44px; }
+      .btn { min-height: 44px; }
+      .btn.small { min-height: 36px; padding: 6px 10px; font-size: 13px; }
+      .chip { padding: 7px 12px; font-size: 13px; }
+      .chip button { font-size: 16px; padding: 0 6px; }
       .inline-obs, .inline-ra-sel { font-size: 14px; }
-      /* Botones de acción principales en columna */
+      .row > input[type=text], .row > select { flex-basis: 100%; }
+
+      /* Botones de acción principales a ancho completo */
+      .action-row { flex-direction: column; }
+      .action-row > .btn { flex: 1 1 auto !important; }
       .btn-generate, .btn-plan { width: 100%; flex-basis: 100%; }
       .btn-generate { font-size: 15px; padding: 14px; }
-      .modal { padding: 18px; }
+      .right { justify-content: flex-start; }
+
+      /* Filtros del calendario en columna */
+      .cal-filter-bar select, .cal-filter-bar input { flex: 1 1 100%; max-width: none; font-size: 16px; }
+      .cal-filter-bar label { flex-basis: 100%; }
+
+      /* Calendario: cada fila como una tarjeta en vez de una tabla de 9 columnas */
+      #tabla thead { display: none; }
+      #tabla, #tabla tbody, #tabla tr { display: block; width: 100%; }
+      #tabla tr { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+      #tabla td { display: inline; padding: 0; border: none; font-size: 13px; }
+      #tabla td.c-fecha { font-weight: 700; }
+      #tabla td.c-dia { color: var(--muted); }
+      #tabla td.c-mod { flex-basis: 100%; font-weight: 600; }
+      #tabla td.c-mod:empty { display: none; }
+      #tabla td.c-ini:not(:empty)::after { content: " – "; }
+      #tabla td.c-ini:empty, #tabla td.c-fin:empty { display: none; }
+      #tabla td.c-horas:not(:empty)::before { content: "· "; }
+      #tabla td.c-horas:not(:empty)::after { content: " h"; }
+      #tabla td.c-obs, #tabla td.c-ra { display: block; flex-basis: 100%; margin-top: 4px; }
+      #tabla td.c-ra::before { content: "RA planificado"; font-size: 11px; color: var(--muted); display: block; margin-bottom: 2px; }
+      #tabla td.c-obs::before { content: "Observaciones"; font-size: 11px; color: var(--muted); display: block; margin-bottom: 2px; }
+      #tabla .inline-obs { height: auto; min-height: 38px; overflow: auto; }
+      #tabla .inline-ra-sel { max-width: none; width: 100%; }
+      .table-wrap { max-height: none; }
+
+      /* Tarjetas, modales y paneles admin */
+      .home-grid { grid-template-columns: 1fr; }
+      .cuaderno-card { flex-wrap: wrap; }
+      .cuaderno-card > div:last-child { flex-basis: 100%; justify-content: flex-start !important; }
+      .modal { padding: 18px; max-height: 92vh; overflow-y: auto; }
+      .modal .modal-footer { flex-wrap: wrap; }
+      .modal .modal-footer .btn { flex: 1 1 auto; justify-content: center; }
       .import-modal { max-width: 100vw; max-height: 96vh; border-radius: 10px; }
+      .import-head, .import-step-panel { padding: 12px 14px; }
       .import-list-item { flex-wrap: wrap; gap: 4px 10px; }
       .import-list-item .il-meta { white-space: normal; flex-basis: 100%; }
-      .home-grid { grid-template-columns: 1fr; }
-      .table-wrap { max-height: 70vh; }
-      .user-table th, .user-table td { padding: 8px 6px; }
-      h1 { font-size: 18px; }
+      .user-table th, .user-table td { padding: 8px 6px; font-size: 12px; }
+      .tab-empty { padding: 40px 12px; }
+      .readonly-banner { flex-wrap: wrap; }
     }
   </style>
 </head>
@@ -2981,7 +3030,8 @@ function renderCalendarFromRows(rows) {
     const tdRA = document.createElement('td');
     tdRA.appendChild(raSelect);
 
-    tr.innerHTML = `<td>${r.fecha}</td><td>${r.dia}</td><td>${badge}</td><td>${esc(r.modulo)}</td><td>${r.inicio}</td><td>${r.fin}</td><td>${r.horas||''}</td>`;
+    tr.innerHTML = `<td class="c-fecha">${r.fecha}</td><td class="c-dia">${r.dia}</td><td class="c-tipo">${badge}</td><td class="c-mod">${esc(r.modulo)}</td><td class="c-ini">${r.inicio}</td><td class="c-fin">${r.fin}</td><td class="c-horas">${r.horas||''}</td>`;
+    tdObs.className = 'c-obs'; tdRA.className = 'c-ra';
     tr.appendChild(tdObs);
     tr.appendChild(tdRA);
     tbody.appendChild(tr);
