@@ -28,6 +28,7 @@ Aplicación web para crear y gestionar **cuadernos docentes interactivos**. Cada
 ### Admin
 - Gestión de usuarios (crear, editar, eliminar)
 - Panel de administración completo
+- **Exportar / importar copia** (pestaña Docentes, admin y jefatura): un `.json` con usuarios (contraseñas cifradas), cuadernos completos (temporalización, planificación, calendario, seguimiento) y temporalizaciones de centro. Al importar: *Añadir* (omite lo que ya exista) o *Reemplazar todo* (solo admin).
 - **Restablecer aplicación** (pestaña Docentes): borra todos los cuadernos, temporalizaciones, caché de CATEDU y usuarios excepto el propio admin. Pide escribir `BORRAR TODO`. Solo rol admin, no jefatura.
 
 ### Jefatura

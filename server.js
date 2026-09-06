@@ -491,6 +491,61 @@ app.delete('/api/temporalizaciones/:id', auth, adminOnly, (req, res) => {
   res.json({ ok: true });
 });
 
+// === COPIA DE SEGURIDAD COMPLETA (admin/jefatura): usuarios, cuadernos, temporalizaciones ===
+app.get('/api/admin/export', auth, adminOnly, (req, res) => {
+  const users = db.prepare("SELECT username, password, role, display_name, created_at FROM users").all();
+  const cuadernos = db.prepare(`SELECT c.title, c.ciclo, c.state_json, c.calendar_json, c.plan_json, c.seguimiento_json, c.updated_at, c.created_at, u.username
+    FROM cuadernos c JOIN users u ON c.user_id = u.id`).all().map(c => ({ ...c,
+      state_json: JSON.parse(c.state_json || '{}'), calendar_json: JSON.parse(c.calendar_json || '[]'),
+      plan_json: JSON.parse(c.plan_json || '{}'), seguimiento_json: JSON.parse(c.seguimiento_json || '{}') }));
+  const temporalizaciones = db.prepare("SELECT nombre, curso, nivel, data_json, updated_by, updated_at, created_at FROM temporalizaciones").all()
+    .map(t => ({ ...t, data_json: JSON.parse(t.data_json || '{}') }));
+  res.setHeader('Content-Disposition', `attachment; filename="cuaderno-docente-copia-${new Date().toISOString().slice(0,10)}.json"`);
+  res.json({ formato: 'cuaderno-docente-backup', version: 1, exportado: new Date().toISOString(), por: req.user.username,
+    nota: 'Las contraseñas están cifradas (bcrypt) para que los usuarios puedan volver a entrar tras restaurar.',
+    users, cuadernos, temporalizaciones });
+});
+
+// modo: 'anadir' (conserva lo actual, salta usuarios/temporalizaciones que ya existan) | 'reemplazar' (borra todo salvo el usuario actual)
+app.post('/api/admin/import', auth, adminOnly, (req, res) => {
+  const { data, modo } = req.body || {};
+  if (!data || data.formato !== 'cuaderno-docente-backup') return res.status(400).json({ error: 'El fichero no es una copia de Cuaderno Docente' });
+  if (modo === 'reemplazar' && req.user.role !== 'admin') return res.status(403).json({ error: 'Solo el administrador puede reemplazar todo' });
+  const users = Array.isArray(data.users) ? data.users : [], cuads = Array.isArray(data.cuadernos) ? data.cuadernos : [], temps = Array.isArray(data.temporalizaciones) ? data.temporalizaciones : [];
+  const r = { usuarios: 0, usuariosOmitidos: 0, cuadernos: 0, cuadernosOmitidos: 0, cuadernosSinDocente: 0, temporalizaciones: 0, temporalizacionesOmitidas: 0 };
+  db.transaction(() => {
+    if (modo === 'reemplazar') {
+      db.prepare("DELETE FROM cuadernos").run(); db.prepare("DELETE FROM temporalizaciones").run();
+      db.prepare("DELETE FROM users WHERE id != ?").run(req.user.id);
+    }
+    const insU = db.prepare("INSERT INTO users (username, password, role, display_name, created_at) VALUES (?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))");
+    for (const u of users) {
+      const uname = String(u.username || '').trim(); if (!uname) continue;
+      if (db.prepare("SELECT id FROM users WHERE username = ?").get(uname)) { r.usuariosOmitidos++; continue; }
+      const role = ['docente', 'jefatura', 'admin'].includes(u.role) ? u.role : 'docente';
+      const pass = /^\$2[aby]\$/.test(String(u.password || '')) ? u.password : bcrypt.hashSync(String(u.password || 'cambiar123'), 10);
+      insU.run(uname, pass, role, String(u.display_name || uname), u.created_at || null); r.usuarios++;
+    }
+    const insC = db.prepare("INSERT INTO cuadernos (user_id, title, ciclo, state_json, calendar_json, plan_json, seguimiento_json, updated_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), COALESCE(?, CURRENT_TIMESTAMP))");
+    for (const c of cuads) {
+      const u = db.prepare("SELECT id FROM users WHERE username = ?").get(String(c.username || ''));
+      if (!u) { r.cuadernosSinDocente++; continue; }
+      if (c.created_at && db.prepare("SELECT id FROM cuadernos WHERE user_id = ? AND title = ? AND ciclo = ? AND created_at = ?").get(u.id, String(c.title || 'Mi Cuaderno'), String(c.ciclo || ''), c.created_at)) { r.cuadernosOmitidos++; continue; }
+      const js = v => typeof v === 'string' ? v : JSON.stringify(v ?? {});
+      insC.run(u.id, String(c.title || 'Mi Cuaderno'), String(c.ciclo || ''), js(c.state_json), typeof c.calendar_json === 'string' ? c.calendar_json : JSON.stringify(c.calendar_json ?? []),
+        js(c.plan_json), js(c.seguimiento_json), c.updated_at || null, c.created_at || null); r.cuadernos++;
+    }
+    const insT = db.prepare("INSERT INTO temporalizaciones (nombre, curso, nivel, data_json, updated_by, updated_at, created_at) VALUES (?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), COALESCE(?, CURRENT_TIMESTAMP))");
+    for (const t of temps) {
+      const norm = normalizarTemporalizacion(t.data_json); if (!norm || !t.nombre) continue;
+      const niv = normalizarNivel(t.nivel) ?? '';
+      if (db.prepare("SELECT id FROM temporalizaciones WHERE nombre = ? AND curso = ? AND nivel = ?").get(t.nombre, String(t.curso || ''), niv)) { r.temporalizacionesOmitidas++; continue; }
+      insT.run(String(t.nombre), String(t.curso || ''), niv, JSON.stringify(norm), String(t.updated_by || req.user.username), t.updated_at || null, t.created_at || null); r.temporalizaciones++;
+    }
+  })();
+  res.json({ ok: true, ...r });
+});
+
 // === RESTABLECER APLICACIÓN (solo admin): borra cuadernos, temporalizaciones, caché y usuarios excepto el admin actual ===
 app.post('/api/admin/reset', auth, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Solo el administrador' });
