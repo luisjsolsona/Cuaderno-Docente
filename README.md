@@ -97,12 +97,12 @@ La aplicación queda disponible en `http://localhost:9000`
 ## Uso del cuaderno docente
 
 1. **Inicia sesión** → verás la pantalla con todos tus cuadernos agrupados por ciclo formativo
-2. **Crea un cuaderno nuevo** o abre uno existente
-3. En la pestaña **Temporalización**:
-   - Indica el **Ciclo formativo** y el **Título** del cuaderno
-   - Añade **Festivos**, **FEOE** y **Evaluaciones** (a mano o importando un fichero, ver abajo)
-   - Define los **Módulos** (día de la semana y horario)
-   - Añade **RAs y CEs** (manualmente o importando desde CATEDU)
+2. **Crea un cuaderno nuevo**. Se abre un asistente en dos pasos:
+   - **1/2 Módulo**: Familia → Ciclo → Módulo en CATEDU. Los RAs se cargan solos; al confirmar, el título, el ciclo (con su nivel) y el nombre del módulo quedan rellenos.
+   - **2/2 Fechas y festivos**: se aplica la temporalización del centro de tu nivel (o el calendario oficial de Aragón si jefatura no ha publicado ninguna).
+3. En la pestaña **Temporalización** solo queda:
+   - Indicar el **día y horario** del módulo (paso 5, el nombre ya está)
+   - Revisar festivos, FEOE y evaluaciones
 4. Pulsa **🧠 Proponer planificación por RAs** → abre la pestaña **Planificación**
 5. Pulsa **⚡ Generar Calendario** → abre la pestaña **Calendario**
 6. En **Calendario**: filtra filas, edita Observaciones y RA Planificado, exporta a `.xlsx` o `.csv`

@@ -827,7 +827,7 @@
 <div class="modal-overlay hidden" id="importCateduModal" onclick="if(event.target===this)closeImportModal()">
   <div class="import-modal">
     <div class="import-head">
-      <h2>📥 Importar RAs desde CATEDU</h2>
+      <h2 id="importCateduTitle">📥 Importar RAs desde CATEDU</h2>
       <button class="import-close" onclick="closeImportModal()">✕</button>
     </div>
     <div style="background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:8px 20px;font-size:12px;color:#1e40af">
@@ -1203,6 +1203,7 @@ async function createNewCuaderno() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     await openCuaderno(data.id, true);
+    openCateduImport(true);
   } catch (e) {
     alert('Error creando cuaderno: ' + e.message);
   }
@@ -2733,6 +2734,8 @@ let importSelectedMod = null;
 let importRaList = [];
 let importCurrentStep = 1;
 let importSelectedCicloNombre = '';
+let importSelectedCiclo = null;      // { cod, nombre, grado }
+let importOnboarding = false;        // true cuando el asistente forma parte de la creación de un cuaderno nuevo
 const importCache = {};
 
 const PROXIES_LIST = [
@@ -2773,15 +2776,18 @@ async function fetchViaProxyImport(url, timeoutMs = 10000) {
   return null;
 }
 
-function openCateduImport() {
-  importSelectedMod = null; importRaList = []; importSelectedCicloNombre = '';
+function openCateduImport(onboarding = false) {
+  importOnboarding = onboarding;
+  byId('importCateduTitle').textContent = onboarding ? '1/2 · Elige el módulo del nuevo cuaderno' : '📥 Importar RAs desde CATEDU';
+  byId('importApplyBtn').textContent = onboarding ? '✔ Crear cuaderno con este módulo' : '✔ Aplicar';
+  importSelectedMod = null; importRaList = []; importSelectedCicloNombre = ''; importSelectedCiclo = null;
   byId('importApplyBtn').disabled = true;
   setImportRaStatus('', '');
   byId('importCateduModal').classList.remove('hidden');
   importGoToStep(1);
 }
 
-function closeImportModal() { byId('importCateduModal').classList.add('hidden'); }
+function closeImportModal() { byId('importCateduModal').classList.add('hidden'); importOnboarding = false; }
 
 function importGoToStep(n) {
   importCurrentStep = n;
@@ -2862,7 +2868,7 @@ async function selectFamilia(cod, nombre) {
 function renderCiclos(ciclos) {
   byId('statusCiclos').textContent = `${ciclos.length} ciclos disponibles`;
   byId('ciclosList').innerHTML = ciclos.map(c =>
-    `<div class="import-list-item" onclick="selectCiclo('${esc(c.cod)}','${c.nombre.replace(/'/g,"&#39;")}')">` +
+    `<div class="import-list-item" onclick="selectCiclo('${esc(c.cod)}','${c.nombre.replace(/'/g,"&#39;")}','${(c.grado||'').replace(/'/g,"&#39;")}')">` +
     `<span class="il-code">${esc(c.cod)}</span>` +
     `<span class="il-name">${esc(c.nombre)}</span>` +
     (c.grado ? `<span class="il-meta">${esc(c.grado)}</span>` : '') +
@@ -2872,9 +2878,10 @@ function renderCiclos(ciclos) {
 
 // ---- PASO 3: Modulos ----
 
-async function selectCiclo(cod, nombre) {
+async function selectCiclo(cod, nombre, grado = '') {
   importGoToStep(3);
   importSelectedCicloNombre = `${nombre} (${cod})`;
+  importSelectedCiclo = { cod, nombre, grado };
   const el = byId('modulosList_catedu'), st = byId('statusModulos');
   el.innerHTML = '';
   st.innerHTML = `<div class="spinner-sm"></div> Cargando modulos...`;
@@ -2956,6 +2963,7 @@ function selectModuloCatedu(mod) {
   byId('importModMeta').textContent = [horasLabel, importSelectedCicloNombre || mod.ciclo].filter(Boolean).join(' - ');
   byId('importApplyBtn').disabled = true;
   importGoToStep(4);
+  if (importOnboarding) doImportRas();
 }
 
 function setImportRaStatus(msg, cls) {
@@ -3059,10 +3067,48 @@ async function doImportRas() {
   btn.disabled = false;
 }
 
+// Nivel a partir del código de ciclo de CATEDU (IFC101 = básico, IFC201 = medio, IFC302 = superior)
+function nivelDesdeCodigoCiclo(cod) {
+  const m = String(cod || '').toUpperCase().match(/^[A-Z]{3}(\d)\d{2}$/);
+  return m ? ({ '1': 'CFGB', '2': 'CFGM', '3': 'CFGS' }[m[1]] || '') : '';
+}
 function applyImport() {
   if (!importRaList.length) { setImportRaStatus('Carga primero los RAs pulsando "Cargar RAs desde CATEDU"', 'err'); return; }
   importRaList.forEach(ra => RAs.push(ra));
-  renderRAs(); scheduleAutoSave(); closeImportModal();
+  renderRAs();
+  if (importOnboarding && importSelectedMod) {
+    const mod = importSelectedMod, cic = importSelectedCiclo || {};
+    const nivel = nivelDesdeCiclo(cic.grado) || nivelDesdeCiclo(cic.nombre) || nivelDesdeCodigoCiclo(cic.cod);
+    byId('cuaderno-title').value = `${mod.cod} ${mod.nombre}`.trim();
+    byId('cuaderno-ciclo').value = [nivel, cic.nombre].filter(Boolean).join(' ');
+    byId('moduloNombre').value = mod.nombre;      // paso 5: solo falta día y horario
+    importOnboarding = false;
+    scheduleAutoSave(); closeImportModal();
+    onboardingPaso2();
+    return;
+  }
+  scheduleAutoSave(); closeImportModal();
+}
+
+// 2/2: fechas y festivos. Aplica la temporalización del centro del nivel; si no hay, ofrece el calendario oficial.
+async function onboardingPaso2() {
+  showDocTab('temporalizacion');
+  await loadCentroTemporalizaciones();
+  const sel = byId('centroTempSel');
+  const t = centroTempList.find(x => String(x.id) === sel.value);
+  if (t) {
+    if (confirm(`2/2 · Fechas y festivos\n\n¿Aplicar la temporalización del centro "${t.nombre}"?\n${resumenTemp(combinarCentroTemp(t, baseDeCentroTemp(t)))}`)) {
+      aplicarTemporalizacion(normalizarTemporalizacion(combinarCentroTemp(t, baseDeCentroTemp(t))), true);
+      const base = baseDeCentroTemp(t);
+      centroTemp = { id: t.id, nombre: t.nombre, updated_at: t.updated_at, baseId: base?.id || null, baseUpdatedAt: base?.updated_at || '' };
+      scheduleAutoSave(); actualizarBannerCentroTemp();
+    }
+  } else if (!centroTempList.length) {
+    if (confirm('2/2 · Fechas y festivos\n\nJefatura no ha publicado temporalización de centro. ¿Cargar el calendario oficial de Aragón 2026-27 (Zaragoza)?\nLa FEOE la añades luego en el paso 3.')) cargarCalendarioOficial('Zaragoza');
+  } else {
+    alert('2/2 · Fechas y festivos\n\nElige tu nivel en el desplegable "Temporalización del centro" y pulsa Aplicar.');
+  }
+  byId('centroTempSel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // === GENERATE CALENDAR ===
