@@ -111,7 +111,7 @@ La aplicación queda disponible en `http://localhost:9000`
 
 ## Temporalización de centro (fuente única)
 
-1. **Jefatura/Admin** → panel de administración → pestaña **📅 Temporalizaciones** → **+ Nueva temporalización**. El contenido se carga desde un fichero `.json`/`.csv` (formato de abajo) o copiando las fechas de uno de sus propios cuadernos.
+1. **Jefatura/Admin** → panel de administración → pestaña **📅 Temporalizaciones** → **+ Nueva temporalización**. Las fechas de inicio y fin de curso se escriben en el formulario; festivos, FEOE y evaluaciones se cargan desde un fichero `.json`/`.csv` (formato de abajo) o copiando de uno de sus propios cuadernos.
    - Crea **una general** por curso escolar (ciclo vacío) con las fechas del curso y los **festivos, que son iguales para todos**.
    - Crea **una por nivel** (CFGB/FP Básica, CFGM, CFGS, Curso de especialización) solo con lo que difiere: la **FEOE** y las evaluaciones del nivel. Al aplicarse hereda fechas y festivos de la general del mismo curso.
 2. **Docente** → en su cuaderno, pestaña **Temporalización** → desplegable *Temporalización del centro* → **📌 Aplicar del centro**. Se preselecciona la del nivel deducido del ciclo del cuaderno (p. ej. "FPB Informática" → CFGB, "1º SMR CFGM" → CFGM); si no se deduce, elige la del desplegable. Se reemplazan los festivos, FEOE y evaluaciones del cuaderno por los oficiales (después puede añadir los suyos).
@@ -157,7 +157,13 @@ fecha_inicio,fecha_fin,descripcion,ambito
 2026-10-12,2026-10-12,Fiesta Nacional / Día del Pilar,nacional
 ```
 
-El botón **📄 Plantilla .csv** descarga la temporalización de Zaragoza 2026-27 completa (festivos reales; fechas de curso, FEOE y evaluaciones de ejemplo a ajustar).
+Una fila con `ambito` = `curso` (o descripción "inicio de curso" / "fin de curso") fija las fechas del curso.
+
+El botón **📄 Plantilla .csv** descarga la temporalización de Zaragoza 2026-27 (fechas oficiales de FP presencial 10/09/2026 → 18/06/2027 y festivos; FEOE y evaluaciones de ejemplo a ajustar).
+
+**Fuente oficial curso 2026-27:** [Calendario escolar 2026-2027 (Educaragon, PDF)](https://educa.aragon.es/documents/20126/2820569/Calendario+Escolar+2026-2027+-+Educaragon.pdf/50447fc8-06ec-56ce-0fb0-3906719f4b18?t=1786103855636) · [Resolución de 29 de abril de 2025, BOA nº 88 de 12/05/2025](https://www.boa.aragon.es/cgi-bin/EBOA/BRSCGI?CMD=VEROBJ&MLKOB=1392479120808).
+
+Los festivos y FEOE de varios días se muestran como un único chip de rango (`2026-12-23 → 2027-01-06 (15 d)`); la ✕ elimina el rango completo.
 
 **JSON** (el mismo que genera **📤 Exportar**):
 

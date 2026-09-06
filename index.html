@@ -584,6 +584,9 @@
             <p class="note" style="margin-top:7px">
               Carga de golpe las <strong>fechas del curso, festivos, FEOE y evaluaciones</strong> (pasos 1–4). Útil para que jefatura reparta un único fichero al departamento.
               CSV con columnas <code>tipo;inicio;fin;descripcion;bloquea</code> (tipo: <code>curso</code>, <code>festivo</code>, <code>feoe</code>, <code>evaluacion</code>; fechas <code>AAAA-MM-DD</code> o <code>DD/MM/AAAA</code>).
+              Los rangos (vacaciones) se indican con inicio y fin en una sola fila.
+              <br>📎 Fuente oficial curso 2026-27: <a href="https://educa.aragon.es/documents/20126/2820569/Calendario+Escolar+2026-2027+-+Educaragon.pdf/50447fc8-06ec-56ce-0fb0-3906719f4b18?t=1786103855636" target="_blank" rel="noopener">Calendario escolar 2026-2027 (Educaragon, PDF)</a>
+              · <a href="https://www.boa.aragon.es/cgi-bin/EBOA/BRSCGI?CMD=VEROBJ&MLKOB=1392479120808" target="_blank" rel="noopener">Resolución BOA 12/05/2025</a>.
             </p>
           </div>
 
@@ -1686,7 +1689,11 @@ async function formTemporalizacionCentro(t) {
       </select></div>
     </div>
     <p class="note" style="margin-top:4px">Crea <strong>una general</strong> por curso con las fechas y los festivos (iguales para todos). Las de <strong>nivel</strong> (CFGB, CFGM…) solo necesitan la FEOE y evaluaciones propias del nivel: al aplicarlas heredan fechas y festivos de la general del mismo curso.</p>
-    <label style="margin-top:8px">Contenido (fechas, festivos, FEOE, evaluaciones)</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="flex:1 1 120px"><label>Inicio de curso</label><input type="date" id="tc-inicio" value="${esc(t?.data_json?.inicio || '')}" /></div>
+      <div style="flex:1 1 120px"><label>Fin de curso</label><input type="date" id="tc-fin" value="${esc(t?.data_json?.fin || '')}" /></div>
+    </div>
+    <label style="margin-top:8px">Festivos, FEOE y evaluaciones</label>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="btn small" id="tc-file-btn">📥 Desde fichero (.json / .csv)</button>
       <input type="file" id="tc-file" accept=".json,.csv,.txt" style="display:none" />
@@ -1698,9 +1705,12 @@ async function formTemporalizacionCentro(t) {
     { text: t ? 'Guardar' : 'Crear', cls: 'primary', action: async () => {
       const nombre = byId('tc-nombre').value.trim();
       if (!nombre) return alert('Indica un nombre');
-      if (!data) return alert('Carga el contenido desde un fichero o un cuaderno');
+      const ini = byId('tc-inicio').value, fin = byId('tc-fin').value;
+      if (ini && fin && fin < ini) return alert('La fecha de fin de curso debe ser posterior al inicio');
+      if (!data && !ini && !fin) return alert('Indica las fechas de curso o carga festivos desde un fichero o un cuaderno');
       const payload = { nombre, curso: byId('tc-curso').value, nivel: byId('tc-nivel').value };
-      if (!t || data !== t.data_json) payload.data = data;   // solo enviar contenido si cambió (así no se dispara aviso a los docentes por un cambio de nombre)
+      const merged = { ...(data || { festivos: [], feoes: [], evaluaciones: [] }), inicio: ini, fin: fin };
+      if (!t || JSON.stringify(merged) !== JSON.stringify(t.data_json)) payload.data = merged;   // solo enviar contenido si cambió (así no se dispara aviso a los docentes por un cambio de nombre)
       const res = await apiFetch(t ? '/api/temporalizaciones/' + t.id : '/api/temporalizaciones', { method: t ? 'PUT' : 'POST', body: JSON.stringify(payload) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); return alert(e.error || 'Error al guardar'); }
       closeModal(); loadAdminTemporalizaciones();
@@ -1708,6 +1718,8 @@ async function formTemporalizacionCentro(t) {
   ]);
   const setData = (d, origen) => {
     data = d; byId('tc-resumen').textContent = resumenTemp(d) + (origen ? ` (${origen})` : '');
+    if (d.inicio && !byId('tc-inicio').value) byId('tc-inicio').value = d.inicio;
+    if (d.fin && !byId('tc-fin').value) byId('tc-fin').value = d.fin;
     if (!byId('tc-nombre').value.trim() && origen) byId('tc-nombre').value = origen;
   };
   byId('tc-file-btn').onclick = () => byId('tc-file').click();
@@ -2147,18 +2159,18 @@ function mkChip(html, onDel, cls='') {
   return c;
 }
 
-function renderFestivos() {
-  byId('festivosList').innerHTML = '';
-  Array.from(festivos.entries()).sort((a,b) => a[0].localeCompare(b[0])).forEach(([iso,m]) => {
-    byId('festivosList').appendChild(mkChip(`🎌 ${iso}${m?' · '+esc(m):''}`, () => { festivos.delete(iso); renderFestivos(); scheduleAutoSave(); }));
+// Los días consecutivos con el mismo motivo se muestran como un único chip de rango (la ✕ borra el rango completo)
+function fmtRango(r) { return r.inicio === r.fin ? r.inicio : `${r.inicio} → ${r.fin}` + ` (${rangoDias(r.inicio, r.fin).length} d)`; }
+function renderRangosChips(map, listId, icono, cls, render) {
+  byId(listId).innerHTML = '';
+  comprimirRangos(map).forEach(r => {
+    byId(listId).appendChild(mkChip(`${icono} ${fmtRango(r)}${r.desc ? ' · ' + esc(r.desc) : ''}`, () => {
+      rangoDias(r.inicio, r.fin).forEach(d => map.delete(d)); render(); scheduleAutoSave();
+    }, cls));
   });
 }
-function renderFeoes() {
-  byId('feoeList').innerHTML = '';
-  Array.from(feoes.entries()).sort((a,b) => a[0].localeCompare(b[0])).forEach(([iso,e]) => {
-    byId('feoeList').appendChild(mkChip(`🏭 ${iso}${e?' · '+esc(e):''}`, () => { feoes.delete(iso); renderFeoes(); scheduleAutoSave(); }, 'feoe-chip'));
-  });
-}
+function renderFestivos() { renderRangosChips(festivos, 'festivosList', '🎌', '', renderFestivos); }
+function renderFeoes() { renderRangosChips(feoes, 'feoeList', '🏭', 'feoe-chip', renderFeoes); }
 function renderEvals() {
   byId('evalsList').innerHTML = '';
   Array.from(evaluaciones.entries()).sort((a,b) => a[0].localeCompare(b[0])).forEach(([iso,info]) => {
@@ -2340,7 +2352,11 @@ function csvATemporalizacion(text) {
     const bloq = idx.bloquea >= 0 ? /^(s|si|sí|1|true|x|yes)$/i.test(c[idx.bloquea] || '') : false;
     if (!tipo) continue;
     if (!ini) { errores.push(`Línea ${i+1}: fecha no válida`); continue; }
-    if (tipo === 'curso') { t.inicio = ini; t.fin = fin; }
+    const ambito = idx.ambito >= 0 ? (c[idx.ambito] || '').toLowerCase() : '';
+    const descL = desc.toLowerCase();
+    if (tipo === 'curso' || ambito === 'curso') { t.inicio = ini; t.fin = fin; }
+    else if (tipoPorDefecto && /inicio\s+(de\s+)?curso/.test(descL)) t.inicio = ini;
+    else if (tipoPorDefecto && /fin(al)?\s+(de\s+)?curso/.test(descL)) t.fin = ini;
     else if (tipo === 'festivo') t.festivos.push({ inicio: ini, fin, motivo: desc });
     else if (tipo === 'feoe') t.feoes.push({ inicio: ini, fin, empresa: desc });
     else if (tipo === 'evaluacion' || tipo === 'eval') t.evaluaciones.push({ fecha: ini, desc: desc || 'Evaluación', bloquea: bloq });
@@ -2539,7 +2555,7 @@ byId('plantillaTempBtn').onclick = () => {
   // Festivos reales de Zaragoza, curso 2026-27. Ajusta fechas de curso, FEOE y evaluaciones a tu centro.
   const csv = '\uFEFF' + [
     'tipo;inicio;fin;descripcion;bloquea',
-    'curso;2026-09-14;2027-06-22;Curso 2026-2027 (ajustar a la orden de calendario escolar);',
+    'curso;2026-09-10;2027-06-18;Curso 2026-27 FP presencial (BOA 12/05/2025, Resolución 29/04/2025);',
     'festivo;2026-10-12;2026-10-12;Fiesta Nacional / Día del Pilar (nacional);',
     'festivo;2026-10-13;2026-10-14;Fiestas del Pilar (provincial);',
     'festivo;2026-11-02;2026-11-02;Sustitución de Todos los Santos (nacional);',
