@@ -154,7 +154,7 @@ evaluacion;18/12/2026;;1ª Evaluación;si
 }
 ```
 
-Junto al botón de importar eliges si **reemplazar** los festivos/FEOE/evaluaciones actuales o **añadir** a los existentes; antes de aplicar se muestra un resumen y avisa de las entradas que quedan fuera de las fechas del curso. Exportar funciona también en cuadernos de compañeros (modo lectura). Tras importar, vuelve a pulsar **⚡ Generar Calendario**. El botón **📄 Plantilla .csv** descarga un ejemplo listo para editar.
+Junto al botón de importar eliges si **reemplazar** los festivos/FEOE/evaluaciones actuales o **añadir** a los existentes; antes de aplicar se muestra un resumen y avisa de las entradas que quedan fuera de las fechas del curso. Exportar funciona también en modo lectura (jefatura viendo un cuaderno ajeno). Tras importar, vuelve a pulsar **⚡ Generar Calendario**. El botón **📄 Plantilla .csv** descarga un ejemplo listo para editar.
 
 ---
 
