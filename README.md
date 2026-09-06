@@ -161,6 +161,8 @@ Una fila con `ambito` = `curso` (o descripción "inicio de curso" / "fin de curs
 
 El botón **📄 Plantilla .csv** descarga la temporalización de Zaragoza 2026-27 (fechas oficiales de FP presencial 10/09/2026 → 18/06/2027 y festivos; FEOE y evaluaciones de ejemplo a ajustar).
 
+**Botón 📅 Calendario oficial Aragón 2026-27** (en el formulario de temporalización de centro y en la tarjeta de importar del cuaderno): carga las fechas de FP presencial (10/09/2026 → 18/06/2027), las festividades nacionales/autonómicas, las vacaciones de Navidad y Semana Santa y los días no lectivos de la provincia elegida (Zaragoza, Huesca o Teruel). Para Zaragoza incluye además los dos festivos locales de la capital (San Valero y Cincomarzada). Los datos están en la constante `CALENDARIO_OFICIAL` de `index.html`; para el curso siguiente basta con actualizarla. Copia del PDF oficial en `docs_calendario_escolar_2026-2027_educaragon.pdf`.
+
 **Fuente oficial curso 2026-27:** [Calendario escolar 2026-2027 (Educaragon, PDF)](https://educa.aragon.es/documents/20126/2820569/Calendario+Escolar+2026-2027+-+Educaragon.pdf/50447fc8-06ec-56ce-0fb0-3906719f4b18?t=1786103855636) · [Resolución de 29 de abril de 2025, BOA nº 88 de 12/05/2025](https://www.boa.aragon.es/cgi-bin/EBOA/BRSCGI?CMD=VEROBJ&MLKOB=1392479120808).
 
 Los festivos y FEOE de varios días se muestran como un único chip de rango (`2026-12-23 → 2027-01-06 (15 d)`); la ✕ elimina el rango completo.

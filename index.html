@@ -577,6 +577,10 @@
                 <option value="anadir">Al importar: añadir a los existentes</option>
               </select>
               <input type="file" id="importTempFile" accept=".json,.csv,.txt,application/json,text/csv" style="display:none" />
+              <span style="display:inline-flex;gap:4px;align-items:center">
+                <button class="btn" id="oficialTempBtn" title="Fechas de curso y festivos oficiales de Aragón 2026-27 (FP presencial)">📅 Cargar calendario oficial 2026-27</button>
+                <select id="oficialTempProv" style="flex:0 0 auto"><option>Zaragoza</option><option>Huesca</option><option>Teruel</option></select>
+              </span>
               <button class="btn" id="exportTempBtn">📤 Exportar (.json)</button>
               <button class="btn" id="exportTempCsvBtn">📤 Exportar (.csv)</button>
               <button class="btn" id="plantillaTempBtn">📄 Plantilla .csv (Zaragoza 2026-27)</button>
@@ -1695,6 +1699,8 @@ async function formTemporalizacionCentro(t) {
     </div>
     <label style="margin-top:8px">Festivos, FEOE y evaluaciones</label>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn primary small" id="tc-oficial-btn">📅 Calendario oficial Aragón 2026-27</button>
+      <select id="tc-oficial-prov" style="flex:0 0 auto"><option>Zaragoza</option><option>Huesca</option><option>Teruel</option></select>
       <button class="btn small" id="tc-file-btn">📥 Desde fichero (.json / .csv)</button>
       <input type="file" id="tc-file" accept=".json,.csv,.txt" style="display:none" />
       <select id="tc-cuaderno" style="flex:1 1 200px"><option value="">📘 Copiar de uno de mis cuadernos…</option>${misCuadernos.map(c => `<option value="${c.id}">${esc(c.title)}${c.ciclo ? ' · ' + esc(c.ciclo) : ''}</option>`).join('')}</select>
@@ -1721,6 +1727,12 @@ async function formTemporalizacionCentro(t) {
     if (d.inicio && !byId('tc-inicio').value) byId('tc-inicio').value = d.inicio;
     if (d.fin && !byId('tc-fin').value) byId('tc-fin').value = d.fin;
     if (!byId('tc-nombre').value.trim() && origen) byId('tc-nombre').value = origen;
+  };
+  byId('tc-oficial-btn').onclick = () => {
+    const prov = byId('tc-oficial-prov').value;
+    setData(normalizarTemporalizacion(temporalizacionOficial(prov)), `Calendario oficial Aragón 2026-27 · ${prov}`);
+    if (!byId('tc-curso').value) byId('tc-curso').value = CALENDARIO_OFICIAL.curso;
+    byId('tc-inicio').value = CALENDARIO_OFICIAL.inicio; byId('tc-fin').value = CALENDARIO_OFICIAL.fin;
   };
   byId('tc-file-btn').onclick = () => byId('tc-file').click();
   byId('tc-file').onchange = async ev => {
@@ -2543,6 +2555,55 @@ byId('aplicarCentroTempBtn').onclick = () => {
   const t = centroTempList.find(x => String(x.id) === byId('centroTempSel').value);
   if (!t) return alert('Elige una temporalización del centro.');
   aplicarCentroTemp(t);
+};
+
+// === CALENDARIO OFICIAL ARAGÓN 2026-27 (Resolución 29/04/2025, BOA nº 88 de 12/05/2025; PDF Educaragon) ===
+const CALENDARIO_OFICIAL = {
+  curso: '2026-27',
+  fuente: 'Calendario escolar 2026-2027 Educaragon / Resolución 29-04-2025 (BOA 12-05-2025)',
+  inicio: '2026-09-10', fin: '2027-06-18', // FP modalidad presencial
+  comunes: [
+    { inicio: '2026-10-12', fin: '2026-10-12', motivo: 'Fiesta Nacional' },
+    { inicio: '2026-11-02', fin: '2026-11-02', motivo: 'Sustitución de Todos los Santos' },
+    { inicio: '2026-12-07', fin: '2026-12-07', motivo: 'Sustitución del Día de la Constitución' },
+    { inicio: '2026-12-08', fin: '2026-12-08', motivo: 'Inmaculada Concepción' },
+    { inicio: '2026-12-23', fin: '2027-01-06', motivo: 'Vacaciones de Navidad (el 22/12 hay clase solo por la mañana)' },
+    { inicio: '2027-03-25', fin: '2027-04-02', motivo: 'Vacaciones de Semana Santa' },
+    { inicio: '2027-04-23', fin: '2027-04-23', motivo: 'Día de Aragón' }
+  ],
+  provincias: {
+    Zaragoza: [
+      { inicio: '2026-10-13', fin: '2026-10-14', motivo: 'No lectivo provincial (Fiestas del Pilar)' },
+      { inicio: '2027-05-03', fin: '2027-05-03', motivo: 'No lectivo provincial (puente 1 de mayo)' },
+      { inicio: '2027-01-29', fin: '2027-01-29', motivo: 'Festivo local Zaragoza (San Valero)' },
+      { inicio: '2027-03-05', fin: '2027-03-05', motivo: 'Festivo local Zaragoza (Cincomarzada)' }
+    ],
+    Huesca: [
+      { inicio: '2027-02-18', fin: '2027-02-19', motivo: 'No lectivo provincial' },
+      { inicio: '2027-05-03', fin: '2027-05-03', motivo: 'No lectivo provincial' }
+    ],
+    Teruel: [
+      { inicio: '2027-02-18', fin: '2027-02-19', motivo: 'No lectivo provincial' },
+      { inicio: '2027-04-26', fin: '2027-04-26', motivo: 'No lectivo provincial' }
+    ]
+  }
+};
+function temporalizacionOficial(provincia = 'Zaragoza') {
+  const c = CALENDARIO_OFICIAL;
+  return { inicio: c.inicio, fin: c.fin,
+    festivos: [...c.comunes, ...(c.provincias[provincia] || [])].sort((a,b) => a.inicio.localeCompare(b.inicio)),
+    feoes: [], evaluaciones: [] };
+}
+byId('oficialTempBtn').onclick = () => {
+  const prov = byId('oficialTempProv').value;
+  const t = normalizarTemporalizacion(temporalizacionOficial(prov));
+  const hayDatos = festivos.size || feoes.size || evaluaciones.size;
+  if (!confirm(`Se cargará el calendario oficial de Aragón 2026-27 (${prov}):\n${resumenTemp(t)}` +
+    (hayDatos ? '\n\n⚠ Se REEMPLAZAN los festivos actuales; FEOE y evaluaciones se conservan.' : '') + '\n\n¿Continuar?')) return;
+  festivos.clear();
+  aplicarTemporalizacion(t, false);
+  if (centroTemp) { centroTemp = null; actualizarBannerCentroTemp(); }
+  if (calendarRows.length) alert('Calendario oficial cargado. Vuelve a pulsar ⚡ Generar calendario.');
 };
 
 function nombreFicheroTemp(ext) {
