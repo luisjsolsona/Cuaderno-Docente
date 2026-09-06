@@ -443,7 +443,7 @@
           <p class="note" style="margin-bottom:12px">Fuente única de fechas de curso, festivos, FEOE y evaluaciones. Los docentes las aplican a sus cuadernos con un clic; cuando cambies una, verán un aviso para actualizar.</p>
           <div class="user-table-wrap">
             <table class="user-table">
-              <thead><tr><th>Nombre</th><th>Curso</th><th>Ciclo</th><th>Contenido</th><th>Actualizada</th><th>Acciones</th></tr></thead>
+              <thead><tr><th>Nombre</th><th>Curso</th><th>Nivel</th><th>Contenido</th><th>Actualizada</th><th>Acciones</th></tr></thead>
               <tbody id="temporalizaciones-tbody"></tbody>
             </table>
           </div>
@@ -1532,7 +1532,7 @@ async function loadAdminTemporalizaciones() {
   tb.innerHTML = adminTempList.map(t => `<tr>
     <td><strong>${esc(t.nombre)}</strong></td>
     <td>${esc(t.curso || '—')}</td>
-    <td>${esc(t.ciclo || '(general)')}</td>
+    <td>${esc(etiquetaNivel(t.nivel))}</td>
     <td style="font-size:12px">${esc(resumenTemp(t.data_json))}</td>
     <td style="font-size:12px">${esc(fmtFechaHora(t.updated_at))}<br><span style="color:var(--muted)">${esc(t.updated_by || '')}</span></td>
     <td style="white-space:nowrap">
@@ -1563,9 +1563,12 @@ async function formTemporalizacionCentro(t) {
     <label>Nombre *</label><input type="text" id="tc-nombre" value="${esc(t?.nombre || '')}" placeholder="p. ej. Calendario escolar 2026-27" />
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <div style="flex:1 1 120px"><label>Curso</label><input type="text" id="tc-curso" value="${esc(t?.curso || '')}" placeholder="2026-27" /></div>
-      <div style="flex:1 1 160px"><label>Ciclo (opcional)</label><input type="text" id="tc-ciclo" value="${esc(t?.ciclo || '')}" placeholder="Vacío = general (todos)" /></div>
+      <div style="flex:1 1 160px"><label>Nivel</label><select id="tc-nivel">
+        <option value="">General (fechas + festivos)</option>
+        ${Object.entries(NIVELES_FP).map(([k,v]) => `<option value="${k}" ${t?.nivel === k ? 'selected' : ''}>${v}</option>`).join('')}
+      </select></div>
     </div>
-    <p class="note" style="margin-top:4px">Crea <strong>una general</strong> (ciclo vacío) con las fechas del curso y los festivos, iguales para todos. Las de <strong>ciclo</strong> solo necesitan la FEOE y evaluaciones propias: al aplicarlas heredan las fechas y festivos de la general del mismo curso.</p>
+    <p class="note" style="margin-top:4px">Crea <strong>una general</strong> por curso con las fechas y los festivos (iguales para todos). Las de <strong>nivel</strong> (CFGB, CFGM…) solo necesitan la FEOE y evaluaciones propias del nivel: al aplicarlas heredan fechas y festivos de la general del mismo curso.</p>
     <label style="margin-top:8px">Contenido (fechas, festivos, FEOE, evaluaciones)</label>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="btn small" id="tc-file-btn">📥 Desde fichero (.json / .csv)</button>
@@ -1579,7 +1582,7 @@ async function formTemporalizacionCentro(t) {
       const nombre = byId('tc-nombre').value.trim();
       if (!nombre) return alert('Indica un nombre');
       if (!data) return alert('Carga el contenido desde un fichero o un cuaderno');
-      const payload = { nombre, curso: byId('tc-curso').value, ciclo: byId('tc-ciclo').value };
+      const payload = { nombre, curso: byId('tc-curso').value, nivel: byId('tc-nivel').value };
       if (!t || data !== t.data_json) payload.data = data;   // solo enviar contenido si cambió (así no se dispara aviso a los docentes por un cambio de nombre)
       const res = await apiFetch(t ? '/api/temporalizaciones/' + t.id : '/api/temporalizaciones', { method: t ? 'PUT' : 'POST', body: JSON.stringify(payload) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); return alert(e.error || 'Error al guardar'); }
@@ -1603,7 +1606,7 @@ async function formTemporalizacionCentro(t) {
       const st = c.state_json || {};
       const toRangos = pares => comprimirRangos(new Map(Array.isArray(pares) ? pares : []));
       setData(normalizarTemporalizacion({ inicio: st.inicio, fin: st.fin, festivos: toRangos(st.festivos), feoes: toRangos(st.feoes), evaluaciones: st.evaluaciones }), c.title);
-      if (!byId('tc-ciclo').value && c.ciclo) byId('tc-ciclo').value = c.ciclo;
+      if (!byId('tc-nivel').value && c.ciclo) byId('tc-nivel').value = nivelDesdeCiclo(c.ciclo);
     } catch { alert('No se pudo leer el cuaderno'); }
   };
 }
@@ -2317,21 +2320,33 @@ async function loadCentroTemporalizaciones() {
   centroTempList.forEach(t => {
     const o = document.createElement('option');
     o.value = t.id;
-    o.textContent = `${t.nombre}${t.curso ? ' · ' + t.curso : ''}${t.ciclo ? ' · ' + t.ciclo : ''}`;
+    o.textContent = `${t.nombre}${t.curso ? ' · ' + t.curso : ''} · ${etiquetaNivel(t.nivel)}`;
     sel.appendChild(o);
   });
-  // Preselección: la aplicada, si no la del mismo ciclo, si no la única
-  const mismoCiclo = ciclo ? centroTempList.find(t => (t.ciclo || '').trim().toLowerCase() === ciclo) : null;
-  const pre = (centroTemp && centroTempList.find(t => t.id === centroTemp.id)) || mismoCiclo || (centroTempList.length === 1 ? centroTempList[0] : null);
+  // Preselección: la aplicada; si no, la del nivel deducido del ciclo del cuaderno; si no, la única
+  const nivel = nivelDesdeCiclo(ciclo);
+  const mismoNivel = nivel ? centroTempList.find(t => (t.nivel || '') === nivel) : null;
+  const pre = (centroTemp && centroTempList.find(t => t.id === centroTemp.id)) || mismoNivel || (centroTempList.length === 1 ? centroTempList[0] : null);
   sel.value = prev && centroTempList.some(t => String(t.id) === prev) ? prev : (pre ? String(pre.id) : '');
   sel.onchange = actualizarInfoCentroTemp;
   actualizarInfoCentroTemp();
   actualizarBannerCentroTemp();
 }
 // La temporalización general (sin ciclo) del mismo curso: aporta fechas de curso y festivos a las de ciclo
+const NIVELES_FP = { CFGB: 'CFGB / FP Básica', CFGM: 'CFGM / Grado Medio', CFGS: 'CFGS / Grado Superior', CE: 'Curso de especialización' };
+function etiquetaNivel(n) { return NIVELES_FP[n] || (n || 'General'); }
+// Deduce el nivel a partir del texto del ciclo del cuaderno (p. ej. "1º SMR CFGM", "FPB Informática")
+function nivelDesdeCiclo(txt) {
+  const t = String(txt || '').toUpperCase();
+  if (/CFGB|FPB|B[ÁA]SIC/.test(t)) return 'CFGB';
+  if (/CFGS|SUPERIOR/.test(t)) return 'CFGS';
+  if (/CFGM|MEDIO/.test(t)) return 'CFGM';
+  if (/\bCE\b|ESPECIALIZACI/.test(t)) return 'CE';
+  return '';
+}
 function baseDeCentroTemp(t, lista = centroTempList) {
-  if (!t || !(t.ciclo || '').trim()) return null;
-  const generales = lista.filter(x => !(x.ciclo || '').trim());
+  if (!t || !(t.nivel || '').trim()) return null;
+  const generales = lista.filter(x => !(x.nivel || '').trim());
   return generales.find(x => (x.curso || '').trim() === (t.curso || '').trim()) || (generales.length === 1 ? generales[0] : null);
 }
 // Combina general + ciclo: la de ciclo solo añade (FEOE, evaluaciones, festivos extra)

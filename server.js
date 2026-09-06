@@ -44,7 +44,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
     curso TEXT DEFAULT '',
-    ciclo TEXT DEFAULT '',
+    nivel TEXT DEFAULT '',
     data_json TEXT NOT NULL DEFAULT '{}',
     updated_by TEXT DEFAULT '',
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -57,6 +57,18 @@ db.exec(`
   try { db.exec("ALTER TABLE cuadernos ADD COLUMN plan_json TEXT DEFAULT '{}'"); } catch {}
   try { db.exec("ALTER TABLE cuadernos ADD COLUMN ciclo TEXT DEFAULT ''"); } catch {}
   try { db.exec("ALTER TABLE cuadernos ADD COLUMN seguimiento_json TEXT DEFAULT '{}'"); } catch {}
+  // temporalizaciones: el ámbito pasa de "ciclo" a "nivel" (CFGB/CFGM/CFGS/CE), porque la FEOE es común por nivel
+  try {
+    db.exec("ALTER TABLE temporalizaciones ADD COLUMN nivel TEXT DEFAULT ''");
+    const cols = db.pragma("table_info('temporalizaciones')").map(c => c.name);
+    if (cols.includes('ciclo')) {
+      db.exec(`UPDATE temporalizaciones SET nivel = CASE
+        WHEN upper(ciclo) LIKE '%CFGB%' OR upper(ciclo) LIKE '%FPB%' OR lower(ciclo) LIKE '%bási%' OR lower(ciclo) LIKE '%basi%' THEN 'CFGB'
+        WHEN upper(ciclo) LIKE '%CFGS%' OR lower(ciclo) LIKE '%superior%' THEN 'CFGS'
+        WHEN upper(ciclo) LIKE '%CFGM%' OR lower(ciclo) LIKE '%medio%' THEN 'CFGM'
+        ELSE '' END WHERE nivel = ''`);
+    }
+  } catch {}
 
   // Remove UNIQUE constraint on user_id if present (allows multiple cuadernos per user)
   const indexes = db.pragma("index_list('cuadernos')");
@@ -339,6 +351,9 @@ app.patch('/api/cuaderno/:id/seguimiento', auth, (req, res) => {
 });
 
 // === TEMPORALIZACIONES DE CENTRO (fuente única: fechas de curso, festivos, FEOE, evaluaciones) ===
+// nivel: '' = general del curso (fechas + festivos, iguales para todos); CFGB/CFGM/CFGS/CE = FEOE y evaluaciones propias del nivel
+const NIVELES = ['', 'CFGB', 'CFGM', 'CFGS', 'CE'];
+function normalizarNivel(v) { const n = String(v || '').trim().toUpperCase(); return NIVELES.includes(n) ? n : null; }
 // Normaliza y valida el JSON recibido; devuelve null si no es válido
 function normalizarTemporalizacion(t) {
   if (!t || typeof t !== 'object') return null;
@@ -372,7 +387,7 @@ function parseTemporalizacion(row) {
 
 // Todos los usuarios autenticados pueden leerlas
 app.get('/api/temporalizaciones', auth, (req, res) => {
-  res.json(db.prepare("SELECT * FROM temporalizaciones ORDER BY curso DESC, ciclo, nombre").all().map(parseTemporalizacion));
+  res.json(db.prepare("SELECT * FROM temporalizaciones ORDER BY curso DESC, nivel, nombre").all().map(parseTemporalizacion));
 });
 
 app.get('/api/temporalizaciones/:id', auth, (req, res) => {
@@ -382,20 +397,24 @@ app.get('/api/temporalizaciones/:id', auth, (req, res) => {
 });
 
 app.post('/api/temporalizaciones', auth, adminOnly, (req, res) => {
-  const { nombre, curso, ciclo, data } = req.body || {};
+  const { nombre, curso, nivel, data } = req.body || {};
   const n = String(nombre || '').trim();
   if (!n) return res.status(400).json({ error: 'Nombre requerido' });
+  const niv = normalizarNivel(nivel);
+  if (niv === null) return res.status(400).json({ error: 'Nivel no válido (vacío, CFGB, CFGM, CFGS o CE)' });
   const norm = normalizarTemporalizacion(data);
   if (!norm) return res.status(400).json({ error: 'Temporalización vacía o con formato no válido' });
-  const r = db.prepare("INSERT INTO temporalizaciones (nombre, curso, ciclo, data_json, updated_by) VALUES (?, ?, ?, ?, ?)")
-    .run(n, String(curso || '').trim(), String(ciclo || '').trim(), JSON.stringify(norm), req.user.display_name || req.user.username);
+  const r = db.prepare("INSERT INTO temporalizaciones (nombre, curso, nivel, data_json, updated_by) VALUES (?, ?, ?, ?, ?)")
+    .run(n, String(curso || '').trim(), niv, JSON.stringify(norm), req.user.display_name || req.user.username);
   res.json(parseTemporalizacion(db.prepare("SELECT * FROM temporalizaciones WHERE id = ?").get(r.lastInsertRowid)));
 });
 
 app.put('/api/temporalizaciones/:id', auth, adminOnly, (req, res) => {
   const row = db.prepare("SELECT * FROM temporalizaciones WHERE id = ?").get(req.params.id);
   if (!row) return res.status(404).json({ error: 'No encontrada' });
-  const { nombre, curso, ciclo, data } = req.body || {};
+  const { nombre, curso, nivel, data } = req.body || {};
+  let niv = null;
+  if (nivel !== undefined) { niv = normalizarNivel(nivel); if (niv === null) return res.status(400).json({ error: 'Nivel no válido (vacío, CFGB, CFGM, CFGS o CE)' }); }
   let dataJson = row.data_json, touched = false;
   if (data !== undefined) {
     const norm = normalizarTemporalizacion(data);
@@ -403,12 +422,12 @@ app.put('/api/temporalizaciones/:id', auth, adminOnly, (req, res) => {
     dataJson = JSON.stringify(norm); touched = true;
   }
   db.prepare(`UPDATE temporalizaciones SET
-    nombre = COALESCE(?, nombre), curso = COALESCE(?, curso), ciclo = COALESCE(?, ciclo),
+    nombre = COALESCE(?, nombre), curso = COALESCE(?, curso), nivel = COALESCE(?, nivel),
     data_json = ?, updated_by = ?, updated_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE updated_at END
     WHERE id = ?`).run(
     nombre !== undefined ? String(nombre).trim() || null : null,
     curso  !== undefined ? String(curso || '').trim() : null,
-    ciclo  !== undefined ? String(ciclo || '').trim() : null,
+    niv,
     dataJson, req.user.display_name || req.user.username, touched ? 1 : 0, row.id);
   res.json(parseTemporalizacion(db.prepare("SELECT * FROM temporalizaciones WHERE id = ?").get(row.id)));
 });

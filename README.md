@@ -112,8 +112,8 @@ La aplicación queda disponible en `http://localhost:9000`
 
 1. **Jefatura/Admin** → panel de administración → pestaña **📅 Temporalizaciones** → **+ Nueva temporalización**. El contenido se carga desde un fichero `.json`/`.csv` (formato de abajo) o copiando las fechas de uno de sus propios cuadernos.
    - Crea **una general** por curso escolar (ciclo vacío) con las fechas del curso y los **festivos, que son iguales para todos**.
-   - Crea **una por ciclo** solo con lo que difiere: **FEOE** y evaluaciones. Al aplicarse hereda fechas y festivos de la general del mismo curso.
-2. **Docente** → en su cuaderno, pestaña **Temporalización** → desplegable *Temporalización del centro* → **📌 Aplicar del centro**. Se preselecciona la de su ciclo (o la general). Se reemplazan los festivos, FEOE y evaluaciones del cuaderno por los oficiales (después puede añadir los suyos).
+   - Crea **una por nivel** (CFGB/FP Básica, CFGM, CFGS, Curso de especialización) solo con lo que difiere: la **FEOE** y las evaluaciones del nivel. Al aplicarse hereda fechas y festivos de la general del mismo curso.
+2. **Docente** → en su cuaderno, pestaña **Temporalización** → desplegable *Temporalización del centro* → **📌 Aplicar del centro**. Se preselecciona la del nivel deducido del ciclo del cuaderno (p. ej. "FPB Informática" → CFGB, "1º SMR CFGM" → CFGM); si no se deduce, elige la del desplegable. Se reemplazan los festivos, FEOE y evaluaciones del cuaderno por los oficiales (después puede añadir los suyos).
 3. Si jefatura **modifica el contenido** de una temporalización (o de la general de la que hereda), los cuadernos que la aplicaron muestran un aviso 🔔 con botón **Actualizar ahora**. Los cuadernos nunca se modifican solos: el docente decide cuándo actualizar. Cambiar solo el nombre/curso/ciclo no genera aviso.
 4. Tras aplicar o actualizar hay que volver a pulsar **⚡ Generar Calendario**.
 
