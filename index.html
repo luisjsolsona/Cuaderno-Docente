@@ -577,7 +577,7 @@
       <!-- TAB: Temporalización -->
       <div id="doctab-temporalizacion" class="doc-tab-panel">
         <div class="card">
-          <p class="note">Rellena los pasos 1–6 y pulsa <strong>⚡ Generar calendario</strong>. El resultado se muestra en la pestaña <strong>Calendario</strong>.</p>
+          <p class="note">Rellena los pasos 1–6 y pulsa <strong>🧠 Proponer planificación por RAs</strong>. Desde la pestaña <strong>Planificación</strong> se genera el <strong>Calendario</strong>.</p>
           <div class="hr"></div>
 
           <!-- Fechas y festivos: temporalización del centro / calendario oficial / fichero -->
@@ -735,9 +735,8 @@
         <div class="action-bar">
           <div class="action-row">
             <button class="btn ghost" id="limpiarTodo" style="flex:0 0 auto;padding:13px 18px">🗑 Limpiar todo</button>
-            <button class="btn-plan" id="planificar">🧠 Proponer planificación por RAs</button>
+            <button class="btn-plan" id="planificar">🧠 Proponer planificación por RAs →</button>
           </div>
-          <button class="btn-generate" id="generar">⚡ GENERAR CALENDARIO</button>
         </div>
       </div><!-- /doctab-temporalizacion -->
 
@@ -752,15 +751,26 @@
               <button class="btn ghost small" id="cerrarPlan">← Volver a Temporalización</button>
             </div>
           </div>
-          <p style="font-size:13px;color:var(--muted);margin:4px 0 12px">Distribución equitativa de sesiones entre los RAs definidos, teniendo en cuenta festivos, FEOE y evaluaciones.</p>
+          <p style="font-size:13px;color:var(--muted);margin:4px 0 12px">Distribución equitativa de sesiones entre los RAs definidos, teniendo en cuenta festivos, FEOE y evaluaciones. Ajusta las sesiones de cada RA (−/+, bloquear) y, cuando te convenza, genera el calendario.</p>
           <div class="hr"></div>
           <div id="planContent"></div>
+          <div class="action-bar" style="margin-top:16px">
+            <div class="action-row">
+              <button class="btn ghost" id="replanificar" style="flex:0 0 auto;padding:13px 18px" onclick="byId('planificar').onclick()">🔄 Recalcular planificación</button>
+            </div>
+            <button class="btn-generate" id="generar">⚡ GENERAR CALENDARIO</button>
+          </div>
+          <p class="note" style="margin-top:6px">El calendario se crea a partir de esta planificación: cada sesión lleva su RA planificado. Si cambias fechas, festivos o sesiones, vuelve a generarlo.</p>
         </div>
         <div id="plan-empty-state" class="tab-empty">
           <div class="tab-empty-icon">🧠</div>
           <p style="font-size:15px;font-weight:600;margin:0 0 8px">Sin planificación generada</p>
-          <p style="font-size:13px;margin:0">Ve a <strong>Temporalización</strong> y pulsa <strong>🧠 Proponer planificación por RAs</strong>.</p>
-          <button class="btn primary" style="margin-top:16px" onclick="showDocTab('temporalizacion')">← Ir a Temporalización</button>
+          <p style="font-size:13px;margin:0">Necesitas fechas del curso, al menos un módulo con horario y los RAs (pestaña <strong>Temporalización</strong>).</p>
+          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px">
+            <button class="btn primary" onclick="byId('planificar').onclick()">🧠 Proponer planificación por RAs</button>
+            <button class="btn ghost" onclick="showDocTab('temporalizacion')">← Ir a Temporalización</button>
+          </div>
+          <p class="note" style="margin-top:14px">¿No quieres planificar por RAs? <a href="#" onclick="byId('generar').onclick();return false">Generar el calendario sin planificación</a>.</p>
         </div>
       </div><!-- /doctab-planificacion -->
 
@@ -810,8 +820,8 @@
         <div id="calendario-empty-state" class="tab-empty">
           <div class="tab-empty-icon">📆</div>
           <p style="font-size:15px;font-weight:600;margin:0 0 8px">Sin calendario generado</p>
-          <p style="font-size:13px;margin:0">Ve a <strong>Temporalización</strong> y pulsa <strong>⚡ Generar Calendario</strong>.</p>
-          <button class="btn primary" style="margin-top:16px" onclick="showDocTab('temporalizacion')">← Ir a Temporalización</button>
+          <p style="font-size:13px;margin:0">Ve a <strong>Planificación</strong> y pulsa <strong>⚡ Generar calendario</strong>.</p>
+          <button class="btn primary" style="margin-top:16px" onclick="showDocTab('planificacion')">← Ir a Planificación</button>
         </div>
       </div><!-- /doctab-calendario -->
 
@@ -2523,7 +2533,7 @@ byId('importTempFile').onchange = async (ev) => {
     if (!confirm(`Se importará:\n${resumen}${avisos.length ? '\n\n' + avisos.join('\n') : ''}\n\n¿Continuar?`)) return;
     aplicarTemporalizacion(t, reemplazar);
     if (centroTemp && reemplazar) { centroTemp = null; actualizarBannerCentroTemp(); }
-    if (calendarRows.length) alert('Temporalización importada. El calendario ya generado no se actualiza solo: vuelve a pulsar ⚡ Generar calendario.');
+    if (calendarRows.length) alert('Temporalización importada. El calendario ya generado no se actualiza solo: vuelve a generarlo desde la pestaña Planificación.');
   } catch (e) {
     alert('No se pudo importar el fichero:\n' + (e.message || e));
   }
@@ -2638,7 +2648,7 @@ function aplicarCentroTemp(t) {
   centroTemp = { id: t.id, nombre: t.nombre, updated_at: t.updated_at, baseId: base?.id || null, baseUpdatedAt: base?.updated_at || '' };
   scheduleAutoSave();
   actualizarBannerCentroTemp();
-  if (calendarRows.length) alert('Temporalización aplicada. Vuelve a pulsar ⚡ Generar calendario para actualizar el calendario.');
+  if (calendarRows.length) alert('Temporalización aplicada. Vuelve a generar el calendario desde la pestaña Planificación.');
 }
 byId('aplicarCentroTempBtn').onclick = () => {
   const t = centroTempList.find(x => String(x.id) === byId('centroTempSel').value);
@@ -2691,7 +2701,7 @@ function cargarCalendarioOficial(prov) {
   festivos.clear();
   aplicarTemporalizacion(t, false);
   if (centroTemp) { centroTemp = null; actualizarBannerCentroTemp(); }
-  if (calendarRows.length) alert('Calendario oficial cargado. Vuelve a pulsar ⚡ Generar calendario.');
+  if (calendarRows.length) alert('Calendario oficial cargado. Vuelve a generar el calendario desde la pestaña Planificación.');
 }
 byId('oficialTempBtn').onclick  = () => cargarCalendarioOficial(byId('oficialTempProv').value);
 byId('oficialTempBtn2').onclick = () => cargarCalendarioOficial(byId('oficialTempProv2').value);

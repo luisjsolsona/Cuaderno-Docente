@@ -88,7 +88,7 @@ La aplicación queda disponible en `http://localhost:9000`
 - **Logo / cabecera** → Vuelve a la pantalla de inicio
 - **← Cuadernos** → Vuelve a la lista de cuadernos desde dentro de un cuaderno
 - **🧠 Proponer planificación por RAs** → Genera la planificación y abre la pestaña Planificación
-- **⚡ Generar Calendario** → Genera el calendario y abre la pestaña Calendario
+- **⚡ Generar Calendario** (en la pestaña Planificación) → Genera el calendario a partir de la planificación y abre la pestaña Calendario
 - **Calendario** → Filtros en tiempo real por tipo, módulo, RA y observaciones
 - **📋 Seguimiento** → Editor mensual por módulo (se genera automáticamente según fechas y módulos)
 
@@ -104,7 +104,7 @@ La aplicación queda disponible en `http://localhost:9000`
    - Indicar el **día y horario** del módulo (paso 5, el nombre ya está)
    - Revisar festivos, FEOE y evaluaciones
 4. Pulsa **🧠 Proponer planificación por RAs** → abre la pestaña **Planificación**
-5. Pulsa **⚡ Generar Calendario** → abre la pestaña **Calendario**
+5. Ajusta las sesiones por RA si quieres y pulsa **⚡ Generar Calendario** (al pie de la planificación) → abre la pestaña **Calendario**
 6. En **Calendario**: filtra filas, edita Observaciones y RA Planificado, exporta a `.xlsx` o `.csv`
 7. En **Seguimiento**: escribe el seguimiento mensual para cada módulo
 
@@ -117,7 +117,7 @@ La aplicación queda disponible en `http://localhost:9000`
    - Crea **una por nivel** (CFGB/FP Básica, CFGM, CFGS, Curso de especialización) solo con lo que difiere: la **FEOE** y las evaluaciones del nivel. Al aplicarse hereda fechas y festivos de la general del mismo curso.
 2. **Docente** → en su cuaderno, pestaña **Temporalización** → desplegable *Temporalización del centro* → **📌 Aplicar del centro**. Se preselecciona la del nivel deducido del ciclo del cuaderno (p. ej. "FPB Informática" → CFGB, "1º SMR CFGM" → CFGM); si no se deduce, elige la del desplegable. Se reemplazan los festivos, FEOE y evaluaciones del cuaderno por los oficiales (después puede añadir los suyos).
 3. Si jefatura **modifica el contenido** de una temporalización (o de la general de la que hereda), los cuadernos que la aplicaron muestran un aviso 🔔 con botón **Actualizar ahora**. Los cuadernos nunca se modifican solos: el docente decide cuándo actualizar. Cambiar solo el nombre/curso/ciclo no genera aviso.
-4. Tras aplicar o actualizar hay que volver a pulsar **⚡ Generar Calendario**.
+4. Tras aplicar o actualizar hay que volver a pulsar **⚡ Generar Calendario** en la pestaña Planificación.
 
 Endpoints: `GET /api/temporalizaciones` (todos los usuarios), `POST/PUT/DELETE /api/temporalizaciones/:id` (admin/jefatura).
 
@@ -179,7 +179,7 @@ Los festivos y FEOE de varios días se muestran como un único chip de rango (`2
 }
 ```
 
-Junto al botón de importar eliges si **reemplazar** los festivos/FEOE/evaluaciones actuales o **añadir** a los existentes; antes de aplicar se muestra un resumen y avisa de las entradas que quedan fuera de las fechas del curso. Exportar funciona también en modo lectura (jefatura viendo un cuaderno ajeno). Tras importar, vuelve a pulsar **⚡ Generar Calendario**. El botón **📄 Plantilla .csv** descarga un ejemplo listo para editar.
+Junto al botón de importar eliges si **reemplazar** los festivos/FEOE/evaluaciones actuales o **añadir** a los existentes; antes de aplicar se muestra un resumen y avisa de las entradas que quedan fuera de las fechas del curso. Exportar funciona también en modo lectura (jefatura viendo un cuaderno ajeno). Tras importar, vuelve a generar el calendario desde la pestaña Planificación. El botón **📄 Plantilla .csv** descarga un ejemplo listo para editar.
 
 ---
 
