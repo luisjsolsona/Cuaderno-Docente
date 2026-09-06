@@ -384,6 +384,7 @@
         <button class="admin-tab active" data-tab="users">👥 Docentes</button>
         <button class="admin-tab" data-tab="cuadernos">📋 Cuadernos</button>
         <button class="admin-tab" data-tab="seguimientos">📋 Seguimientos</button>
+        <button class="admin-tab" data-tab="temporalizaciones">📅 Temporalizaciones</button>
       </div>
 
       <!-- Users tab -->
@@ -431,6 +432,23 @@
         </div>
         <div id="admin-seguimientos-content"></div>
       </div>
+
+      <!-- Temporalizaciones tab -->
+      <div id="tab-temporalizaciones" style="display:none">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <h2 style="margin:0">📅 Temporalizaciones de centro</h2>
+            <button class="btn primary small" onclick="nuevaTemporalizacionCentro()">+ Nueva temporalización</button>
+          </div>
+          <p class="note" style="margin-bottom:12px">Fuente única de fechas de curso, festivos, FEOE y evaluaciones. Los docentes las aplican a sus cuadernos con un clic; cuando cambies una, verán un aviso para actualizar.</p>
+          <div class="user-table-wrap">
+            <table class="user-table">
+              <thead><tr><th>Nombre</th><th>Curso</th><th>Ciclo</th><th>Contenido</th><th>Actualizada</th><th>Acciones</th></tr></thead>
+              <tbody id="temporalizaciones-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ========= DOCENTE PANEL ========= -->
@@ -460,6 +478,12 @@
           <!-- Import / export temporalización -->
           <div class="card" style="margin-bottom:12px">
             <h2>📥 Importar / exportar temporalización</h2>
+            <div id="centro-temp-banner" class="readonly-banner" style="display:none"></div>
+            <div class="row" style="align-items:center;flex-wrap:wrap;margin-bottom:8px">
+              <select id="centroTempSel" style="flex:1 1 220px"><option value="">— Temporalización del centro —</option></select>
+              <button class="btn primary" id="aplicarCentroTempBtn">📌 Aplicar del centro</button>
+              <span class="note" id="centroTempInfo" style="flex-basis:100%;margin:0"></span>
+            </div>
             <div class="row" style="align-items:center;flex-wrap:wrap">
               <button class="btn" id="importTempBtn">📥 Importar fichero (.json / .csv)</button>
               <select id="importTempModo" title="Qué hacer con los festivos, FEOE y evaluaciones ya existentes" style="flex:0 0 auto">
@@ -1139,6 +1163,7 @@ adminTabs.forEach(tab => {
     byId('tab-' + tab.dataset.tab).style.display = 'block';
     if (tab.dataset.tab === 'cuadernos') loadAdminCuadernos();
     if (tab.dataset.tab === 'seguimientos') loadAdminCiclos();
+    if (tab.dataset.tab === 'temporalizaciones') loadAdminTemporalizaciones();
   };
 });
 
@@ -1494,6 +1519,94 @@ function renderAdminCuaderno(data) {
 // ── Pestaña Seguimientos (admin) ─────────────────────────────────────────────
 let _adminSegData = []; // cache for export
 
+// === ADMIN: TEMPORALIZACIONES DE CENTRO ===
+let adminTempList = [];
+async function loadAdminTemporalizaciones() {
+  const tb = byId('temporalizaciones-tbody');
+  tb.innerHTML = '<tr><td colspan="6" class="empty-state">Cargando...</td></tr>';
+  try {
+    const res = await apiFetch('/api/temporalizaciones');
+    adminTempList = res.ok ? await res.json() : [];
+  } catch { adminTempList = []; }
+  if (!adminTempList.length) { tb.innerHTML = '<tr><td colspan="6" class="empty-state">No hay temporalizaciones. Crea la primera con "+ Nueva temporalización".</td></tr>'; return; }
+  tb.innerHTML = adminTempList.map(t => `<tr>
+    <td><strong>${esc(t.nombre)}</strong></td>
+    <td>${esc(t.curso || '—')}</td>
+    <td>${esc(t.ciclo || '(todos)')}</td>
+    <td style="font-size:12px">${esc(resumenTemp(t.data_json))}</td>
+    <td style="font-size:12px">${esc(fmtFechaHora(t.updated_at))}<br><span style="color:var(--muted)">${esc(t.updated_by || '')}</span></td>
+    <td style="white-space:nowrap">
+      <button class="btn ghost small" onclick="editarTemporalizacionCentro(${t.id})" title="Editar">✏️</button>
+      <button class="btn ghost small" onclick="descargarTemporalizacionCentro(${t.id})" title="Descargar JSON">⬇</button>
+      <button class="btn ghost small" onclick="borrarTemporalizacionCentro(${t.id})" title="Borrar" style="color:var(--danger)">🗑</button>
+    </td></tr>`).join('');
+}
+function descargarTemporalizacionCentro(id) {
+  const t = adminTempList.find(x => x.id === id); if (!t) return;
+  descargarTexto('temporalizacion_' + t.nombre.replace(/[^\w\-]+/g, '_') + '.json', JSON.stringify({ formato: 'cuaderno-docente-temporalizacion', version: 1, ...t.data_json }, null, 2), 'application/json');
+}
+async function borrarTemporalizacionCentro(id) {
+  const t = adminTempList.find(x => x.id === id); if (!t) return;
+  if (!confirm(`¿Borrar la temporalización "${t.nombre}"?\nLos cuadernos que la aplicaron conservan sus fechas, pero dejarán de recibir avisos de actualización.`)) return;
+  const res = await apiFetch('/api/temporalizaciones/' + id, { method: 'DELETE' });
+  if (!res.ok) return alert('No se pudo borrar');
+  loadAdminTemporalizaciones();
+}
+function nuevaTemporalizacionCentro() { formTemporalizacionCentro(null); }
+function editarTemporalizacionCentro(id) { formTemporalizacionCentro(adminTempList.find(x => x.id === id) || null); }
+
+async function formTemporalizacionCentro(t) {
+  let data = t ? t.data_json : null;     // contenido pendiente de guardar
+  let misCuadernos = [];
+  try { const r = await apiFetch('/api/mis-cuadernos'); misCuadernos = r.ok ? await r.json() : []; } catch {}
+  const body = `
+    <label>Nombre *</label><input type="text" id="tc-nombre" value="${esc(t?.nombre || '')}" placeholder="p. ej. Calendario escolar 2026-27" />
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="flex:1 1 120px"><label>Curso</label><input type="text" id="tc-curso" value="${esc(t?.curso || '')}" placeholder="2026-27" /></div>
+      <div style="flex:1 1 160px"><label>Ciclo (opcional)</label><input type="text" id="tc-ciclo" value="${esc(t?.ciclo || '')}" placeholder="Vacío = todos los ciclos" /></div>
+    </div>
+    <label style="margin-top:8px">Contenido (fechas, festivos, FEOE, evaluaciones)</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn small" id="tc-file-btn">📥 Desde fichero (.json / .csv)</button>
+      <input type="file" id="tc-file" accept=".json,.csv,.txt" style="display:none" />
+      <select id="tc-cuaderno" style="flex:1 1 200px"><option value="">📘 Copiar de uno de mis cuadernos…</option>${misCuadernos.map(c => `<option value="${c.id}">${esc(c.title)}${c.ciclo ? ' · ' + esc(c.ciclo) : ''}</option>`).join('')}</select>
+    </div>
+    <p class="note" id="tc-resumen" style="margin-top:8px">${data ? esc(resumenTemp(data)) : 'Sin contenido todavía. Carga un fichero o copia de un cuaderno.'}</p>`;
+  openModal(t ? 'Editar temporalización de centro' : 'Nueva temporalización de centro', body, [
+    { text: 'Cancelar', cls: 'ghost', action: closeModal },
+    { text: t ? 'Guardar' : 'Crear', cls: 'primary', action: async () => {
+      const nombre = byId('tc-nombre').value.trim();
+      if (!nombre) return alert('Indica un nombre');
+      if (!data) return alert('Carga el contenido desde un fichero o un cuaderno');
+      const payload = { nombre, curso: byId('tc-curso').value, ciclo: byId('tc-ciclo').value };
+      if (!t || data !== t.data_json) payload.data = data;   // solo enviar contenido si cambió (así no se dispara aviso a los docentes por un cambio de nombre)
+      const res = await apiFetch(t ? '/api/temporalizaciones/' + t.id : '/api/temporalizaciones', { method: t ? 'PUT' : 'POST', body: JSON.stringify(payload) });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); return alert(e.error || 'Error al guardar'); }
+      closeModal(); loadAdminTemporalizaciones();
+    } }
+  ]);
+  const setData = (d, origen) => {
+    data = d; byId('tc-resumen').textContent = resumenTemp(d) + (origen ? ` (${origen})` : '');
+    if (!byId('tc-nombre').value.trim() && origen) byId('tc-nombre').value = origen;
+  };
+  byId('tc-file-btn').onclick = () => byId('tc-file').click();
+  byId('tc-file').onchange = async ev => {
+    const f = ev.target.files?.[0]; ev.target.value = ''; if (!f) return;
+    try { setData(normalizarTemporalizacion(leerTemporalizacion(await f.text(), f.name)), f.name.replace(/\.[^.]+$/, '')); }
+    catch (e) { alert('No se pudo leer el fichero:\n' + (e.message || e)); }
+  };
+  byId('tc-cuaderno').onchange = async ev => {
+    const id = ev.target.value; if (!id) return;
+    try {
+      const r = await apiFetch('/api/cuaderno/' + id); const c = await r.json();
+      const st = c.state_json || {};
+      const toRangos = pares => comprimirRangos(new Map(Array.isArray(pares) ? pares : []));
+      setData(normalizarTemporalizacion({ inicio: st.inicio, fin: st.fin, festivos: toRangos(st.festivos), feoes: toRangos(st.feoes), evaluaciones: st.evaluaciones }), c.title);
+      if (!byId('tc-ciclo').value && c.ciclo) byId('tc-ciclo').value = c.ciclo;
+    } catch { alert('No se pudo leer el cuaderno'); }
+  };
+}
+
 async function loadAdminCiclos() {
   const sel = byId('admin-ciclo-sel');
   if (!sel) return;
@@ -1754,9 +1867,12 @@ const modulos = [], RAs = [];
 let planMap = new Map(), lastAsignaciones = [], ceTempList = [], pendingImport = [];
 let planSesiones = [], planSesCounts = [], planLocked = [];
 let calendarRows = [];
+let centroTemp = null;   // { id, nombre, updated_at } de la temporalización de centro aplicada
+let centroTempList = []; // caché de /api/temporalizaciones
 
 function resetDocenteState() {
   currentCuadernoId = null;
+  centroTemp = null;
   seguimientoData = {};
   festivos.clear(); feoes.clear(); evaluaciones.clear();
   modulos.splice(0); RAs.splice(0); planMap = new Map();
@@ -1783,7 +1899,8 @@ function getState() {
     lastAsignaciones: lastAsignaciones,
     planSesiones: planSesiones,
     planSesCounts: planSesCounts,
-    planLocked: planLocked
+    planLocked: planLocked,
+    centroTemp: centroTemp
   };
 }
 
@@ -1808,6 +1925,7 @@ function restoreState(s) {
   planSesiones   = Array.isArray(s.planSesiones)  ? s.planSesiones  : [];
   planSesCounts  = Array.isArray(s.planSesCounts) ? s.planSesCounts : [];
   planLocked     = Array.isArray(s.planLocked)    ? s.planLocked    : [];
+  centroTemp     = (s.centroTemp && typeof s.centroTemp === 'object') ? s.centroTemp : null;
   renderFestivos(); renderFeoes(); renderEvals(); renderModulos(); renderRAs();
   isLoading = false;
 }
@@ -1882,6 +2000,7 @@ async function loadCuadernoFromServer(id) {
       byId('calendario-empty-state').style.display = 'none';
     }
   } catch {}
+  loadCentroTemporalizaciones();
 }
 
 // Watch title and ciclo changes
@@ -2169,11 +2288,88 @@ byId('importTempFile').onchange = async (ev) => {
     const resumen = `Fechas curso: ${t.inicio || '(sin cambios)'} → ${t.fin || '(sin cambios)'}\nFestivos: ${nFest} días\nFEOE: ${nFeoe} días\nEvaluaciones: ${t.evaluaciones.length}\nModo: ${reemplazar ? 'reemplazar' : 'añadir'}`;
     if (!confirm(`Se importará:\n${resumen}${avisos.length ? '\n\n' + avisos.join('\n') : ''}\n\n¿Continuar?`)) return;
     aplicarTemporalizacion(t, reemplazar);
+    if (centroTemp && reemplazar) { centroTemp = null; actualizarBannerCentroTemp(); }
     if (calendarRows.length) alert('Temporalización importada. El calendario ya generado no se actualiza solo: vuelve a pulsar ⚡ Generar calendario.');
   } catch (e) {
     alert('No se pudo importar el fichero:\n' + (e.message || e));
   }
 };
+// === TEMPORALIZACIÓN DE CENTRO (docente) ===
+function resumenTemp(t) {
+  const dias = arr => (arr || []).reduce((a,r) => a + rangoDias(r.inicio, r.fin).length, 0);
+  return `${t.inicio || '?'} → ${t.fin || '?'} · ${dias(t.festivos)} festivos · ${dias(t.feoes)} FEOE · ${(t.evaluaciones||[]).length} eval.`;
+}
+function fmtFechaHora(iso) {
+  if (!iso) return '';
+  const d = new Date(iso.includes('T') ? iso : iso.replace(' ', 'T') + 'Z');
+  return isNaN(d) ? iso : d.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+}
+async function loadCentroTemporalizaciones() {
+  const sel = byId('centroTempSel'); if (!sel) return;
+  try {
+    const res = await apiFetch('/api/temporalizaciones');
+    centroTempList = res.ok ? await res.json() : [];
+  } catch { centroTempList = []; }
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Temporalización del centro —</option>';
+  const ciclo = (byId('cuaderno-ciclo')?.value || '').trim().toLowerCase();
+  centroTempList.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.id;
+    o.textContent = `${t.nombre}${t.curso ? ' · ' + t.curso : ''}${t.ciclo ? ' · ' + t.ciclo : ''}`;
+    sel.appendChild(o);
+  });
+  // Preselección: la aplicada, si no la del mismo ciclo, si no la única
+  const mismoCiclo = ciclo ? centroTempList.find(t => (t.ciclo || '').trim().toLowerCase() === ciclo) : null;
+  const pre = (centroTemp && centroTempList.find(t => t.id === centroTemp.id)) || mismoCiclo || (centroTempList.length === 1 ? centroTempList[0] : null);
+  sel.value = prev && centroTempList.some(t => String(t.id) === prev) ? prev : (pre ? String(pre.id) : '');
+  sel.onchange = actualizarInfoCentroTemp;
+  actualizarInfoCentroTemp();
+  actualizarBannerCentroTemp();
+}
+function actualizarInfoCentroTemp() {
+  const t = centroTempList.find(x => String(x.id) === byId('centroTempSel').value);
+  byId('centroTempInfo').textContent = t ? `${resumenTemp(t.data_json)} · actualizada ${fmtFechaHora(t.updated_at)} por ${t.updated_by || '—'}` : (centroTempList.length ? '' : 'Jefatura aún no ha publicado ninguna temporalización de centro.');
+}
+function actualizarBannerCentroTemp() {
+  const b = byId('centro-temp-banner'); if (!b) return;
+  b.style.display = 'none'; b.innerHTML = ''; b.style.background = ''; b.style.borderColor = ''; b.style.color = '';
+  if (!centroTemp) return;
+  const actual = centroTempList.find(t => t.id === centroTemp.id);
+  if (!actual) {
+    b.innerHTML = `⚠ Este cuaderno usaba la temporalización de centro <strong>${esc(centroTemp.nombre || '')}</strong>, que ya no existe.`;
+  } else if (actual.updated_at !== centroTemp.updated_at) {
+    b.innerHTML = `🔔 La temporalización de centro <strong>${esc(actual.nombre)}</strong> se actualizó el ${esc(fmtFechaHora(actual.updated_at))} (este cuaderno tiene la del ${esc(fmtFechaHora(centroTemp.updated_at))}). `;
+    if (currentCuadernoEditable) {
+      const btn = document.createElement('button'); btn.className = 'btn primary small'; btn.textContent = '🔄 Actualizar ahora';
+      btn.onclick = () => aplicarCentroTemp(actual);
+      b.appendChild(btn);
+    }
+  } else {
+    b.innerHTML = `📌 Temporalización de centro aplicada: <strong>${esc(actual.nombre)}</strong> (${esc(fmtFechaHora(actual.updated_at))}). Está al día.`;
+    b.style.background = '#ecfdf5'; b.style.borderColor = '#6ee7b7'; b.style.color = '#065f46';
+  }
+  b.style.display = 'flex';
+}
+function aplicarCentroTemp(t) {
+  if (!t) return;
+  const hayDatos = festivos.size || feoes.size || evaluaciones.size;
+  const msg = `Se aplicará "${t.nombre}":\n${resumenTemp(t.data_json)}` +
+    (hayDatos ? '\n\n⚠ Se REEMPLAZARÁN los festivos, FEOE y evaluaciones actuales de este cuaderno (la fuente de verdad es la del centro).' : '') +
+    '\n\n¿Continuar?';
+  if (!confirm(msg)) return;
+  aplicarTemporalizacion(normalizarTemporalizacion(t.data_json), true);
+  centroTemp = { id: t.id, nombre: t.nombre, updated_at: t.updated_at };
+  scheduleAutoSave();
+  actualizarBannerCentroTemp();
+  if (calendarRows.length) alert('Temporalización aplicada. Vuelve a pulsar ⚡ Generar calendario para actualizar el calendario.');
+}
+byId('aplicarCentroTempBtn').onclick = () => {
+  const t = centroTempList.find(x => String(x.id) === byId('centroTempSel').value);
+  if (!t) return alert('Elige una temporalización del centro.');
+  aplicarCentroTemp(t);
+};
+
 function nombreFicheroTemp(ext) {
   const base = byId('cuaderno-ciclo')?.value || byId('cuaderno-title')?.value || 'cuaderno';
   return 'temporalizacion_' + base.trim().replace(/[^\w\-áéíóúüñÁÉÍÓÚÜÑ]+/g, '_').replace(/^_+|_+$/g, '') + ext;

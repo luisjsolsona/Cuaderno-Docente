@@ -13,7 +13,8 @@ Aplicación web para crear y gestionar **cuadernos docentes interactivos**. Cada
   - **Calendario** — Calendario completo con filtros por tipo, módulo, RA y observaciones
   - **Seguimiento** — Editor de seguimiento mensual por módulo
 - Importación guiada de RAs y CEs desde CATEDU (Familia → Ciclo → Módulo)
-- **Importar/exportar temporalización** (fechas del curso, festivos, FEOE y evaluaciones) desde un fichero `.json` o `.csv`, para repartir un único calendario a todo el departamento
+- **Temporalizaciones de centro**: jefatura publica una única fuente de verdad (fechas del curso, festivos, FEOE y evaluaciones) y cada docente la aplica a sus cuadernos con un clic; si jefatura la modifica, el cuaderno avisa y permite actualizar
+- **Importar/exportar temporalización** desde fichero `.json` o `.csv` (alternativa sin servidor central)
 - Planificación automática ponderada de sesiones por RA
 - Exportación a `.xlsx` (multihojas) y `.csv`
 - **Duplicar cuadernos** con un clic
@@ -30,6 +31,7 @@ Aplicación web para crear y gestionar **cuadernos docentes interactivos**. Cada
 
 ### Jefatura
 - Control total sobre todos los cuadernos (ver y editar)
+- Publica y mantiene las **temporalizaciones de centro**
 - Gestión de usuarios
 - Acceso al panel de administración
 
@@ -103,6 +105,17 @@ La aplicación queda disponible en `http://localhost:9000`
 5. Pulsa **⚡ Generar Calendario** → abre la pestaña **Calendario**
 6. En **Calendario**: filtra filas, edita Observaciones y RA Planificado, exporta a `.xlsx` o `.csv`
 7. En **Seguimiento**: escribe el seguimiento mensual para cada módulo
+
+---
+
+## Temporalización de centro (fuente única)
+
+1. **Jefatura/Admin** → panel de administración → pestaña **📅 Temporalizaciones** → **+ Nueva temporalización**. El contenido se carga desde un fichero `.json`/`.csv` (formato de abajo) o copiando las fechas de uno de sus propios cuadernos. Puede haber varias (por curso escolar, o por ciclo si la FEOE difiere).
+2. **Docente** → en su cuaderno, pestaña **Temporalización** → desplegable *Temporalización del centro* → **📌 Aplicar del centro**. Se reemplazan los festivos, FEOE y evaluaciones del cuaderno por los oficiales (después puede añadir los suyos). Se preselecciona la del mismo ciclo si existe.
+3. Si jefatura **modifica el contenido** de una temporalización, los cuadernos que la aplicaron muestran un aviso 🔔 con botón **Actualizar ahora**. Los cuadernos nunca se modifican solos: el docente decide cuándo actualizar. Cambiar solo el nombre/curso/ciclo no genera aviso.
+4. Tras aplicar o actualizar hay que volver a pulsar **⚡ Generar Calendario**.
+
+Endpoints: `GET /api/temporalizaciones` (todos los usuarios), `POST/PUT/DELETE /api/temporalizaciones/:id` (admin/jefatura).
 
 ---
 

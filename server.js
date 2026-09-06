@@ -39,6 +39,17 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS temporalizaciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    curso TEXT DEFAULT '',
+    ciclo TEXT DEFAULT '',
+    data_json TEXT NOT NULL DEFAULT '{}',
+    updated_by TEXT DEFAULT '',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // Migrations for existing databases
@@ -324,6 +335,87 @@ app.patch('/api/cuaderno/:id/seguimiento', auth, (req, res) => {
   const { seguimiento_json } = req.body || {};
   db.prepare("UPDATE cuadernos SET seguimiento_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
     .run(JSON.stringify(seguimiento_json || {}), req.params.id);
+  res.json({ ok: true });
+});
+
+// === TEMPORALIZACIONES DE CENTRO (fuente única: fechas de curso, festivos, FEOE, evaluaciones) ===
+// Normaliza y valida el JSON recibido; devuelve null si no es válido
+function normalizarTemporalizacion(t) {
+  if (!t || typeof t !== 'object') return null;
+  const isoRe = /^\d{4}-\d{2}-\d{2}$/;
+  const iso = v => (typeof v === 'string' && isoRe.test(v)) ? v : '';
+  const rangos = arr => (Array.isArray(arr) ? arr : []).map(r => {
+    if (!r || typeof r !== 'object') return null;
+    let ini = iso(r.inicio), fin = iso(r.fin) || ini;
+    if (!ini) return null;
+    if (fin < ini) [ini, fin] = [fin, ini];
+    return { inicio: ini, fin, desc: String(r.desc ?? r.motivo ?? r.empresa ?? '').slice(0, 200) };
+  }).filter(Boolean);
+  const out = {
+    inicio: iso(t.inicio), fin: iso(t.fin),
+    festivos: rangos(t.festivos).map(r => ({ inicio: r.inicio, fin: r.fin, motivo: r.desc })),
+    feoes:    rangos(t.feoes).map(r => ({ inicio: r.inicio, fin: r.fin, empresa: r.desc })),
+    evaluaciones: (Array.isArray(t.evaluaciones) ? t.evaluaciones : []).map(e => {
+      const f = e && iso(e.fecha); if (!f) return null;
+      return { fecha: f, desc: String(e.desc || 'Evaluación').slice(0, 200), bloquea: !!e.bloquea };
+    }).filter(Boolean)
+  };
+  if (!out.inicio && !out.fin && !out.festivos.length && !out.feoes.length && !out.evaluaciones.length) return null;
+  return out;
+}
+
+function parseTemporalizacion(row) {
+  let data = {};
+  try { data = JSON.parse(row.data_json || '{}'); } catch {}
+  return { ...row, data_json: data };
+}
+
+// Todos los usuarios autenticados pueden leerlas
+app.get('/api/temporalizaciones', auth, (req, res) => {
+  res.json(db.prepare("SELECT * FROM temporalizaciones ORDER BY curso DESC, ciclo, nombre").all().map(parseTemporalizacion));
+});
+
+app.get('/api/temporalizaciones/:id', auth, (req, res) => {
+  const row = db.prepare("SELECT * FROM temporalizaciones WHERE id = ?").get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'No encontrada' });
+  res.json(parseTemporalizacion(row));
+});
+
+app.post('/api/temporalizaciones', auth, adminOnly, (req, res) => {
+  const { nombre, curso, ciclo, data } = req.body || {};
+  const n = String(nombre || '').trim();
+  if (!n) return res.status(400).json({ error: 'Nombre requerido' });
+  const norm = normalizarTemporalizacion(data);
+  if (!norm) return res.status(400).json({ error: 'Temporalización vacía o con formato no válido' });
+  const r = db.prepare("INSERT INTO temporalizaciones (nombre, curso, ciclo, data_json, updated_by) VALUES (?, ?, ?, ?, ?)")
+    .run(n, String(curso || '').trim(), String(ciclo || '').trim(), JSON.stringify(norm), req.user.display_name || req.user.username);
+  res.json(parseTemporalizacion(db.prepare("SELECT * FROM temporalizaciones WHERE id = ?").get(r.lastInsertRowid)));
+});
+
+app.put('/api/temporalizaciones/:id', auth, adminOnly, (req, res) => {
+  const row = db.prepare("SELECT * FROM temporalizaciones WHERE id = ?").get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'No encontrada' });
+  const { nombre, curso, ciclo, data } = req.body || {};
+  let dataJson = row.data_json, touched = false;
+  if (data !== undefined) {
+    const norm = normalizarTemporalizacion(data);
+    if (!norm) return res.status(400).json({ error: 'Temporalización vacía o con formato no válido' });
+    dataJson = JSON.stringify(norm); touched = true;
+  }
+  db.prepare(`UPDATE temporalizaciones SET
+    nombre = COALESCE(?, nombre), curso = COALESCE(?, curso), ciclo = COALESCE(?, ciclo),
+    data_json = ?, updated_by = ?, updated_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE updated_at END
+    WHERE id = ?`).run(
+    nombre !== undefined ? String(nombre).trim() || null : null,
+    curso  !== undefined ? String(curso || '').trim() : null,
+    ciclo  !== undefined ? String(ciclo || '').trim() : null,
+    dataJson, req.user.display_name || req.user.username, touched ? 1 : 0, row.id);
+  res.json(parseTemporalizacion(db.prepare("SELECT * FROM temporalizaciones WHERE id = ?").get(row.id)));
+});
+
+app.delete('/api/temporalizaciones/:id', auth, adminOnly, (req, res) => {
+  const r = db.prepare("DELETE FROM temporalizaciones WHERE id = ?").run(req.params.id);
+  if (!r.changes) return res.status(404).json({ error: 'No encontrada' });
   res.json({ ok: true });
 });
 
