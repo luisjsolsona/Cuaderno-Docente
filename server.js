@@ -40,6 +40,12 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
 
+  CREATE TABLE IF NOT EXISTS catedu_cache (
+    url TEXT PRIMARY KEY,
+    html TEXT NOT NULL,
+    fetched_at INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS temporalizaciones (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
@@ -477,6 +483,60 @@ app.delete('/api/temporalizaciones/:id', auth, adminOnly, (req, res) => {
   const r = db.prepare("DELETE FROM temporalizaciones WHERE id = ?").run(req.params.id);
   if (!r.changes) return res.status(404).json({ error: 'No encontrada' });
   res.json({ ok: true });
+});
+
+// === PROXY + CACHÉ DE CATEDU (RAs/CEs) ===
+// El navegador no puede leer centrosdocentes.catedu.es por CORS; el servidor sí. Se cachea en SQLite para todo el centro.
+const CATEDU_HOST = 'centrosdocentes.catedu.es';
+const CATEDU_TTL_MS = Number(process.env.CATEDU_TTL_DAYS || 30) * 86400000;
+
+async function fetchCatedu(url, timeoutMs = 15000) {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'CuadernoDocente/1.0 (+proxy de centro)' } });
+    if (!r.ok) throw new Error('CATEDU respondió ' + r.status);
+    const buf = Buffer.from(await r.arrayBuffer());
+    const ct = r.headers.get('content-type') || '';
+    const m = ct.match(/charset=([\w-]+)/i);
+    let charset = (m ? m[1] : '').toLowerCase();
+    if (!charset) { const mm = buf.slice(0, 4096).toString('latin1').match(/charset=["']?([\w-]+)/i); charset = mm ? mm[1].toLowerCase() : ''; }
+    let html;
+    if (charset && charset !== 'utf-8' && charset !== 'utf8') {
+      try { html = new TextDecoder(charset).decode(buf); } catch { html = buf.toString('latin1'); }
+    } else {
+      html = buf.toString('utf8');
+      if (html.includes('\uFFFD')) html = buf.toString('latin1'); // no era UTF-8 pese a la cabecera
+    }
+    return html;
+  } finally { clearTimeout(tid); }
+}
+
+app.get('/api/catedu', auth, async (req, res) => {
+  const url = String(req.query.url || '');
+  let u;
+  try { u = new URL(url); } catch { return res.status(400).json({ error: 'URL no válida' }); }
+  if (u.protocol !== 'https:' || u.hostname !== CATEDU_HOST) return res.status(400).json({ error: 'Solo se permite ' + CATEDU_HOST });
+  const refresh = req.query.refresh === '1' && isPrivileged(req.user);
+  const row = db.prepare("SELECT html, fetched_at FROM catedu_cache WHERE url = ?").get(url);
+  if (row && !refresh && Date.now() - row.fetched_at < CATEDU_TTL_MS)
+    return res.json({ html: row.html, cached: true, fetched_at: row.fetched_at });
+  try {
+    const html = await fetchCatedu(url);
+    if (!html || html.trim().length < 200) throw new Error('Respuesta vacía');
+    db.prepare("INSERT INTO catedu_cache (url, html, fetched_at) VALUES (?, ?, ?) ON CONFLICT(url) DO UPDATE SET html = excluded.html, fetched_at = excluded.fetched_at")
+      .run(url, html, Date.now());
+    res.json({ html, cached: false, fetched_at: Date.now() });
+  } catch (e) {
+    // Si CATEDU no responde pero hay copia antigua, mejor eso que nada
+    if (row) return res.json({ html: row.html, cached: true, stale: true, fetched_at: row.fetched_at });
+    res.status(502).json({ error: 'No se pudo consultar CATEDU: ' + (e.name === 'AbortError' ? 'tiempo de espera agotado' : e.message) });
+  }
+});
+
+app.delete('/api/catedu/cache', auth, adminOnly, (req, res) => {
+  const r = db.prepare("DELETE FROM catedu_cache").run();
+  res.json({ ok: true, borradas: r.changes });
 });
 
 // Lista de ciclos distintos (admin/jefatura)

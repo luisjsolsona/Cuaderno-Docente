@@ -12,7 +12,7 @@ Aplicación web para crear y gestionar **cuadernos docentes interactivos**. Cada
   - **Planificación** — Distribución de sesiones por RA (se genera desde Temporalización)
   - **Calendario** — Calendario completo con filtros por tipo, módulo, RA y observaciones
   - **Seguimiento** — Editor de seguimiento mensual por módulo
-- Importación guiada de RAs y CEs desde CATEDU (Familia → Ciclo → Módulo)
+- Importación guiada de RAs y CEs desde CATEDU (Familia → Ciclo → Módulo), a través del servidor del centro con caché compartida (sin extensiones CORS ni proxies públicos)
 - **Temporalizaciones de centro**: jefatura publica una única fuente de verdad (fechas del curso, festivos, FEOE y evaluaciones) y cada docente la aplica a sus cuadernos con un clic; si jefatura la modifica, el cuaderno avisa y permite actualizar
 - **Importar/exportar temporalización** desde fichero `.json` o `.csv` (alternativa sin servidor central)
 - Planificación automática ponderada de sesiones por RA
@@ -78,6 +78,7 @@ La aplicación queda disponible en `http://localhost:9000`
 | `JWT_SECRET` | *(inseguro)* | Secreto para firmar tokens JWT — **cámbialo en producción** |
 | `DB_PATH` | `/data/cuaderno.db` | Ruta de la base de datos SQLite |
 | `TZ` | `UTC` | Zona horaria |
+| `CATEDU_TTL_DAYS` | `30` | Días que se conserva en caché cada página de CATEDU (RAs/CEs) |
 
 ---
 
@@ -118,6 +119,12 @@ La aplicación queda disponible en `http://localhost:9000`
 4. Tras aplicar o actualizar hay que volver a pulsar **⚡ Generar Calendario**.
 
 Endpoints: `GET /api/temporalizaciones` (todos los usuarios), `POST/PUT/DELETE /api/temporalizaciones/:id` (admin/jefatura).
+
+---
+
+## Importación de RAs desde CATEDU
+
+El navegador no puede leer `centrosdocentes.catedu.es` directamente (CORS). El servidor hace de proxy: `GET /api/catedu?url=…` (solo ese dominio, solo HTTPS, usuario autenticado) descarga la página y la guarda en la tabla `catedu_cache`. Cada módulo se consulta una vez para todo el centro; las siguientes importaciones son inmediatas. Si CATEDU no responde y hay copia antigua, se sirve la copia. Jefatura puede vaciar la caché desde el panel admin (pestaña Cuadernos) o con `DELETE /api/catedu/cache`. Si el proxy falla, el cliente conserva los antiguos fallbacks (acceso directo y proxies públicos).
 
 ---
 
