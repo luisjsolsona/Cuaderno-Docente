@@ -579,7 +579,7 @@
               <input type="file" id="importTempFile" accept=".json,.csv,.txt,application/json,text/csv" style="display:none" />
               <button class="btn" id="exportTempBtn">📤 Exportar (.json)</button>
               <button class="btn" id="exportTempCsvBtn">📤 Exportar (.csv)</button>
-              <button class="btn" id="plantillaTempBtn">📄 Plantilla .csv</button>
+              <button class="btn" id="plantillaTempBtn">📄 Plantilla .csv (Zaragoza 2026-27)</button>
             </div>
             <p class="note" style="margin-top:7px">
               Carga de golpe las <strong>fechas del curso, festivos, FEOE y evaluaciones</strong> (pasos 1–4). Útil para que jefatura reparta un único fichero al departamento.
@@ -2320,19 +2320,23 @@ function csvATemporalizacion(text) {
   const sep = [';', ',', '\t'].sort((a,b) => (lines[0].split(b).length) - (lines[0].split(a).length))[0];
   let head = parseCsvLinea(lines[0], sep).map(h => h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
   let start = 1;
-  const idx = { tipo: head.indexOf('tipo'), inicio: head.indexOf('inicio'), fin: head.indexOf('fin'),
-                desc: head.findIndex(h => ['descripcion','motivo','empresa','desc'].includes(h)), bloquea: head.indexOf('bloquea') };
-  if (idx.tipo < 0) { // sin cabecera: orden fijo
-    Object.assign(idx, { tipo: 0, inicio: 1, fin: 2, desc: 3, bloquea: 4 }); start = 0;
-  }
+  const idx = { tipo: head.indexOf('tipo'),
+                inicio: head.findIndex(h => ['inicio','fecha_inicio','fecha','desde'].includes(h)),
+                fin: head.findIndex(h => ['fin','fecha_fin','hasta'].includes(h)),
+                desc: head.findIndex(h => ['descripcion','motivo','empresa','desc','nombre'].includes(h)),
+                bloquea: head.indexOf('bloquea'), ambito: head.indexOf('ambito') };
+  let tipoPorDefecto = null;
+  if (idx.tipo < 0 && idx.inicio >= 0) tipoPorDefecto = 'festivo'; // listado de festivos sin columna tipo (p. ej. fecha_inicio,fecha_fin,descripcion,ambito)
+  else if (idx.tipo < 0) { Object.assign(idx, { tipo: 0, inicio: 1, fin: 2, desc: 3, bloquea: 4 }); start = 0; } // sin cabecera: orden fijo
   const t = { inicio: '', fin: '', festivos: [], feoes: [], evaluaciones: [] };
   const errores = [];
   for (let i = start; i < lines.length; i++) {
     const c = parseCsvLinea(lines[i], sep);
-    const tipo = (c[idx.tipo] || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const tipo = tipoPorDefecto || (c[idx.tipo] || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     const ini = parseFecha(c[idx.inicio]);
-    const fin = parseFecha(c[idx.fin]) || ini;
-    const desc = idx.desc >= 0 ? (c[idx.desc] || '') : '';
+    const fin = (idx.fin >= 0 && parseFecha(c[idx.fin])) || ini;
+    let desc = idx.desc >= 0 ? (c[idx.desc] || '') : '';
+    if (idx.ambito >= 0 && c[idx.ambito]) desc += (desc ? ' (' : '(') + c[idx.ambito] + ')';
     const bloq = idx.bloquea >= 0 ? /^(s|si|sí|1|true|x|yes)$/i.test(c[idx.bloquea] || '') : false;
     if (!tipo) continue;
     if (!ini) { errores.push(`Línea ${i+1}: fecha no válida`); continue; }
@@ -2532,16 +2536,28 @@ function nombreFicheroTemp(ext) {
 byId('exportTempBtn').onclick = () => descargarTexto(nombreFicheroTemp('.json'), JSON.stringify(buildTemporalizacion(), null, 2), 'application/json');
 byId('exportTempCsvBtn').onclick = () => descargarTexto(nombreFicheroTemp('.csv'), temporalizacionACsv(buildTemporalizacion()), 'text/csv;charset=utf-8');
 byId('plantillaTempBtn').onclick = () => {
+  // Festivos reales de Zaragoza, curso 2026-27. Ajusta fechas de curso, FEOE y evaluaciones a tu centro.
   const csv = '\uFEFF' + [
     'tipo;inicio;fin;descripcion;bloquea',
-    'curso;15/09/2026;23/06/2027;Curso 2026-2027;',
-    'festivo;12/10/2026;;Fiesta Nacional;',
-    'festivo;23/12/2026;07/01/2027;Navidad;',
-    'feoe;15/03/2027;11/06/2027;FEOE 2º curso;',
-    'evaluacion;18/12/2026;;1ª Evaluación;si',
-    'evaluacion;26/03/2027;;2ª Evaluación;no'
+    'curso;2026-09-14;2027-06-22;Curso 2026-2027 (ajustar a la orden de calendario escolar);',
+    'festivo;2026-10-12;2026-10-12;Fiesta Nacional / Día del Pilar (nacional);',
+    'festivo;2026-10-13;2026-10-14;Fiestas del Pilar (provincial);',
+    'festivo;2026-11-02;2026-11-02;Sustitución de Todos los Santos (nacional);',
+    'festivo;2026-11-03;2026-11-03;No lectivo autonómico (autonómico);',
+    'festivo;2026-12-07;2026-12-07;Sustitución del Día de la Constitución (nacional);',
+    'festivo;2026-12-08;2026-12-08;Inmaculada Concepción (nacional);',
+    'festivo;2026-12-23;2027-01-06;Vacaciones de Navidad (vacaciones);',
+    'festivo;2027-01-29;2027-01-29;San Valero (local);',
+    'festivo;2027-03-05;2027-03-05;Cincomarzada (local);',
+    'festivo;2027-03-25;2027-04-02;Vacaciones de Semana Santa (vacaciones);',
+    'festivo;2027-04-23;2027-04-23;San Jorge - Día de Aragón (autonómico);',
+    'festivo;2027-04-24;2027-04-24;No lectivo autonómico (sábado) (autonómico);',
+    'festivo;2027-05-03;2027-05-03;Puente del 1 de mayo (provincial);',
+    'feoe;2027-03-15;2027-06-11;FEOE (ejemplo: ajustar por nivel);',
+    'evaluacion;2026-12-18;2026-12-18;1ª Evaluación (ejemplo);si',
+    'evaluacion;2027-03-24;2027-03-24;2ª Evaluación (ejemplo);no'
   ].join('\r\n');
-  descargarTexto('plantilla_temporalizacion.csv', csv, 'text/csv;charset=utf-8');
+  descargarTexto('temporalizacion_zaragoza_2026-27.csv', csv, 'text/csv;charset=utf-8');
 };
 
 byId('addModulo').onclick = () => {

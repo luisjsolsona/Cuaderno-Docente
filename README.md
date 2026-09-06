@@ -150,6 +150,15 @@ evaluacion;18/12/2026;;1ª Evaluación;si
 | `descripcion` | Motivo / empresa / nombre de la evaluación |
 | `bloquea` | Solo para `evaluacion`: `si` / `no` |
 
+También se acepta un listado de festivos sin columna `tipo` (todas las filas se tratan como festivo), como `festivos_zaragoza_2026-27.csv` incluido en el repo:
+
+```csv
+fecha_inicio,fecha_fin,descripcion,ambito
+2026-10-12,2026-10-12,Fiesta Nacional / Día del Pilar,nacional
+```
+
+El botón **📄 Plantilla .csv** descarga la temporalización de Zaragoza 2026-27 completa (festivos reales; fechas de curso, FEOE y evaluaciones de ejemplo a ajustar).
+
 **JSON** (el mismo que genera **📤 Exportar**):
 
 ```json
