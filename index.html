@@ -300,6 +300,18 @@
     .import-ra-status.loading { background: #eef4ff; color: var(--accent); }
     .import-ra-status.ok { background: #edfbf2; color: #1a7a3a; }
     .import-ra-status.err { background: #fef0f0; color: #c00; }
+    /* === PLANIFICACIÓN: tarjetas por RA === */
+    .plan-head { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+    .plan-title { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; line-height: 1.35; }
+    .plan-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; align-items: center; }
+    .plan-ces { margin-top: 8px; }
+    .plan-ces summary { cursor: pointer; font-size: 12px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 4px; }
+    .plan-ces summary::before { content: "▸"; font-size: 11px; transition: transform .15s; }
+    .plan-ces[open] summary::before { transform: rotate(90deg); }
+    .plan-ces summary::-webkit-details-marker { display: none; }
+    .plan-ces-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 5px; margin-top: 6px; }
+    .plan-ce { background: #fff; border: 1px solid; border-radius: 6px; padding: 5px 8px; font-size: 11.5px; line-height: 1.35; }
+
     /* === MÓVIL === */
     @media (max-width: 640px) {
       .wrap { padding-left: 10px; padding-right: 10px; }
@@ -379,6 +391,10 @@
       .user-table th, .user-table td { padding: 8px 6px; font-size: 12px; }
       .tab-empty { padding: 40px 12px; }
       .readonly-banner { flex-wrap: wrap; }
+      .plan-head { flex-wrap: wrap; }
+      .plan-head .plan-title { flex-basis: calc(100% - 60px); }
+      .plan-ces-list { grid-template-columns: 1fr; }
+      .plan-ce { font-size: 13px; padding: 7px 10px; }
     }
   </style>
 </head>
@@ -3371,9 +3387,9 @@ function _renderPlanCards(asignaciones) {
 
     let ceHTML = '';
     if (ra.ces.length) {
-      ceHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">';
-      ra.ces.forEach(ce => { ceHTML += `<span style="background:#fff;border:1px solid ${col.border};border-radius:5px;padding:2px 7px;font-size:11px;color:${col.text}"><strong>${esc(ce.num)}</strong> ${esc(ce.desc.length > 50 ? ce.desc.slice(0, 50) + '…' : ce.desc)}</span>`; });
-      ceHTML += '</div>';
+      ceHTML = `<details class="plan-ces"><summary style="color:${col.text}">Criterios de evaluación (${ra.ces.length})</summary><div class="plan-ces-list">`;
+      ra.ces.forEach(ce => { ceHTML += `<div class="plan-ce" style="border-color:${col.border};color:${col.text}"><strong>${esc(ce.num)}</strong> ${esc(ce.desc)}</div>`; });
+      ceHTML += '</div></details>';
     }
 
     const sesId = 'ses_' + raIdx;
@@ -3387,13 +3403,12 @@ function _renderPlanCards(asignaciones) {
     const disAttr = locked ? 'disabled' : '';
 
     card.innerHTML = `
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-            <span style="background:${col.badge};color:#fff;font-weight:800;border-radius:7px;padding:3px 10px;font-size:13px">${esc(ra.num)}</span>
-            <span style="font-size:13px;font-weight:600;flex:1">${esc(ra.contenido.length > 80 ? ra.contenido.slice(0, 80) + '…' : ra.contenido)}</span>
-          </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:${col.text};align-items:center">
+      <div class="plan-head">
+        <span style="background:${col.badge};color:#fff;font-weight:800;border-radius:7px;padding:3px 10px;font-size:13px;flex-shrink:0">${esc(ra.num)}</span>
+        <span class="plan-title" title="${esc(ra.contenido)}">${esc(ra.contenido)}</span>
+        <button onclick="const el=document.getElementById('${sesId}');el.style.display=el.style.display==='none'?'block':'none'" style="background:${col.bg};border:1px solid ${col.border};color:${col.text};border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0">Ver sesiones ▾</button>
+      </div>
+      <div class="plan-meta" style="color:${col.text}">
             <span style="display:flex;align-items:center;gap:4px">
               📅
               <button onclick="adjustPlanSessions(${raIdx},-1)" ${disAttr} style="${adjBtnStyle}" title="Quitar sesión">−</button>
@@ -3404,10 +3419,8 @@ function _renderPlanCards(asignaciones) {
             <button onclick="togglePlanLock(${raIdx})" style="${lockBtnStyle}" title="${locked ? 'Desbloquear' : 'Bloquear este valor'}">${locked ? '🔒 Bloqueado' : '🔓 Bloquear'}</button>
             <span>⏱ <strong>${horas.toFixed(1)}h</strong></span>
             <span>🗓 ${dateRange}</span>
-          </div>${ceHTML}
-        </div>
-        <button onclick="const el=document.getElementById('${sesId}');el.style.display=el.style.display==='none'?'block':'none'" style="background:${col.bg};border:1px solid ${col.border};color:${col.text};border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap">Ver sesiones ▾</button>
       </div>
+      ${ceHTML}
       <div id="${sesId}" style="display:none;margin-top:10px;overflow:auto;max-height:200px;border-radius:8px;border:1px solid ${col.border}">
         <table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#fff">
           <th style="padding:5px 8px;text-align:left;color:var(--muted)">Fecha</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Día</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Módulo</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Horario</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Horas</th>
