@@ -815,7 +815,7 @@
             </div>
           </div>
           <div id="meta" class="muted" style="font-size:13px;margin-bottom:10px"></div>
-          <p style="font-size:12px;color:var(--accent2);margin:0 0 8px">💡 Puedes editar la columna <strong>Observaciones</strong> y el <strong>RA Planificado</strong> directamente en la tabla. Los cambios se guardan automáticamente.</p>
+          <p style="font-size:12px;color:var(--accent2);margin:0 0 8px">💡 Puedes editar la columna <strong>Observaciones</strong> y el <strong>UD Planificada</strong> directamente en la tabla. Los cambios se guardan automáticamente.</p>
 
           <!-- Filter bar -->
           <div class="cal-filter-bar">
@@ -828,7 +828,7 @@
               <option value="eval">Evaluación</option>
             </select>
             <select id="filter-modulo" onchange="applyCalFilter()"><option value="">Todos los módulos</option></select>
-            <select id="filter-ra" onchange="applyCalFilter()"><option value="">Todos los RAs</option></select>
+            <select id="filter-ra" onchange="applyCalFilter()"><option value="">Todas las UD</option></select>
             <input type="text" id="filter-obs" placeholder="Buscar observaciones…" oninput="applyCalFilter()" style="flex:1 1 160px;max-width:220px" />
             <span id="filter-count"></span>
             <button class="btn ghost small" onclick="clearCalFilter()">✕ Limpiar</button>
@@ -838,7 +838,7 @@
             <table id="tabla">
               <thead><tr>
                 <th>Fecha</th><th>Día</th><th>Tipo</th><th>Módulo</th>
-                <th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>RA Planificado</th>
+                <th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>UD Planificada</th>
               </tr></thead>
               <tbody id="tabla-tbody"></tbody>
             </table>
@@ -1723,15 +1723,17 @@ function renderAdminCuaderno(data) {
   }
 
   // ── Planificación ────────────────────────────────────────────────────────
+  // Compatible con el formato antiguo (una asignación por RA, campo p.ra)
+  // para cuadernos que un docente aún no ha reabierto tras esta actualización.
   if (plan.length) {
     const totalSes = plan.reduce((a,p) => a + (p.sesiones?.length||0), 0);
     const totalH   = plan.reduce((a,p) => a + (p.horas||0), 0);
     html += `<div class="card" style="margin-bottom:12px">
-      <h2>🧠 Planificación por RAs — ${totalSes} sesiones · ${totalH.toFixed(1)}h</h2>
+      <h2>🧠 Planificación — ${totalSes} sesiones · ${totalH.toFixed(1)}h</h2>
       <table style="width:100%;border-collapse:collapse;font-size:13px">
         <thead><tr style="background:var(--bg)">
-          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">RA</th>
-          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">Contenido</th>
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">UD</th>
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">RA / contenido</th>
           <th style="padding:7px 10px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted)">Sesiones</th>
           <th style="padding:7px 10px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted)">Horas</th>
           <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted)">Desde</th>
@@ -1742,11 +1744,14 @@ function renderAdminCuaderno(data) {
       const ses  = p.sesiones || [];
       const desde = ses[0]?.fecha || '—';
       const hasta = ses[ses.length-1]?.fecha || '—';
+      const nombre = p.ud?.nombre || p.ra?.num || '—';
+      const raLabel = (p.raNums && p.raNums.length) ? p.raNums.join(' + ') : (p.ra?.num || '');
+      const contenido = p.ud ? '' : (p.ra?.contenido || '');
       html += `<tr>
         <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9">
-          <span style="background:${col.badge};color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">${esc(p.ra?.num||'')}</span>
+          <span style="background:${col.badge};color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">${esc(nombre)}</span>
         </td>
-        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:12px">${esc((p.ra?.contenido||'').slice(0,80))}${(p.ra?.contenido||'').length>80?'…':''}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:12px">${esc(raLabel)}${contenido ? ' — ' + esc(contenido.slice(0,60)) + (contenido.length>60?'…':'') : ''}</td>
         <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:700">${ses.length}</td>
         <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:center">${(p.horas||0).toFixed(1)}h</td>
         <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:12px;color:var(--muted)">${desde}</td>
@@ -1761,7 +1766,7 @@ function renderAdminCuaderno(data) {
     html += `<div class="card" style="margin-bottom:12px"><h2>📆 Calendario (${rows.length} filas)</h2><div class="table-wrap" style="max-height:50vh"><table>
       <thead><tr>
         <th>Fecha</th><th>Día</th><th>Tipo</th><th>Módulo</th>
-        <th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>RA</th>
+        <th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>UD</th>
       </tr></thead><tbody>`;
     rows.forEach(r => {
       let badge = '';
@@ -2170,9 +2175,9 @@ let saveTimer = null;
 let currentCuadernoId = null;
 let seguimientoData = {};
 const festivos = new Map(), feoes = new Map(), evaluaciones = new Map();
-const modulos = [], RAs = [];
+const modulos = [], RAs = [], UDs = [];
 let planMap = new Map(), lastAsignaciones = [], ceTempList = [], pendingImport = [];
-let planSesiones = [], planSesCounts = [], planLocked = [];
+let planSesiones = [], selectedPendingKey = null;
 let calendarRows = [];
 let centroTemp = null;   // { id, nombre, updated_at } de la temporalización de centro aplicada
 let moduloNombreFijo = ''; // nombre del módulo elegido en CATEDU: el cuaderno es de ese módulo y no se cambia
@@ -2183,9 +2188,9 @@ function resetDocenteState() {
   centroTemp = null; moduloNombreFijo = ''; setModuloNombreFijo('');
   seguimientoData = {};
   festivos.clear(); feoes.clear(); evaluaciones.clear();
-  modulos.splice(0); RAs.splice(0); planMap = new Map();
+  modulos.splice(0); RAs.splice(0); UDs.splice(0); planMap = new Map();
   lastAsignaciones = []; ceTempList = []; calendarRows = [];
-  planSesiones = []; planSesCounts = []; planLocked = [];
+  planSesiones = []; selectedPendingKey = null;
   if (byId('cuaderno-title')) byId('cuaderno-title').value = '';
   if (byId('cuaderno-ciclo')) byId('cuaderno-ciclo').value = '';
   if (byId('salida')) byId('salida').style.display = 'none';
@@ -2206,8 +2211,7 @@ function getState() {
     planMap: Array.from(planMap.entries()),
     lastAsignaciones: lastAsignaciones,
     planSesiones: planSesiones,
-    planSesCounts: planSesCounts,
-    planLocked: planLocked,
+    UDs: UDs,
     centroTemp: centroTemp,
     moduloNombre: moduloNombreFijo
   };
@@ -2238,8 +2242,20 @@ function restoreState(s) {
   planMap = new Map(Array.isArray(s.planMap) ? s.planMap : []);
   lastAsignaciones = Array.isArray(s.lastAsignaciones) ? s.lastAsignaciones : [];
   planSesiones   = Array.isArray(s.planSesiones)  ? s.planSesiones  : [];
-  planSesCounts  = Array.isArray(s.planSesCounts) ? s.planSesCounts : [];
-  planLocked     = Array.isArray(s.planLocked)    ? s.planLocked    : [];
+  UDs.splice(0);
+  if (Array.isArray(s.UDs) && s.UDs.length) {
+    s.UDs.forEach(u => UDs.push(u));
+  } else if (Array.isArray(s.RAs) && s.RAs.length && Array.isArray(s.planSesCounts) && s.planSesCounts.length) {
+    // Migración desde el formato antiguo (una asignación por RA): crea una UD por RA
+    // con todos sus CE, conservando las sesiones y el bloqueo que ya tuviera.
+    s.RAs.forEach((ra, i) => UDs.push({
+      id: 'ud' + (i + 1), nombre: 'UD' + (i + 1),
+      items: (ra.ces || []).map((ce, ceIdx) => ({ raIdx: i, ceIdx })),
+      sesiones: s.planSesCounts[i] || 0,
+      locked: !!(s.planLocked && s.planLocked[i])
+    }));
+  }
+  selectedPendingKey = null;
   centroTemp     = (s.centroTemp && typeof s.centroTemp === 'object') ? s.centroTemp : null;
   setModuloNombreFijo(s.moduloNombre || '');
   renderFestivos(); renderFeoes(); renderEvals(); renderModulos(); renderRAs();
@@ -2301,11 +2317,11 @@ async function loadCuadernoFromServer(id) {
     if (data.seguimiento_json && typeof data.seguimiento_json === 'object') {
       seguimientoData = { ...data.seguimiento_json };
     }
-    // Restore plan display if there were asignaciones saved
-    if (lastAsignaciones.length > 0 && planSesiones.length > 0) {
+    // Restore plan display if there were UDs saved
+    if (UDs.length > 0 && planSesiones.length > 0) {
       const planContent = byId('planContent');
       if (planContent) planContent.innerHTML = '';
-      _renderPlanCards(lastAsignaciones);
+      _rebuildPlanFromUDs();
       byId('salidaPlan').style.display = 'block';
       byId('plan-empty-state').style.display = 'none';
     }
@@ -2395,7 +2411,15 @@ function renderRAs() {
     const card = document.createElement('div');
     card.className = 'ra-card ra-color-' + (idx % 8);
     card.innerHTML = raCardHTML(ra, true, idx);
-    card.querySelector('[data-idx]').onclick = () => { RAs.splice(idx,1); renderRAs(); scheduleAutoSave(); };
+    card.querySelector('[data-idx]').onclick = () => {
+      if (UDs.length && !confirm('Borrar este RA invalida la planificación por UDs ya hecha (los CE de los demás RA cambian de posición). Se vaciará la planificación. ¿Continuar?')) return;
+      RAs.splice(idx,1); renderRAs();
+      if (UDs.length) {
+        UDs.splice(0); selectedPendingKey = null; lastAsignaciones = []; planMap = new Map();
+        byId('salidaPlan').style.display = 'none'; byId('plan-empty-state').style.display = 'block';
+      }
+      scheduleAutoSave();
+    };
     c.appendChild(card);
   });
   refreshAccordion();
@@ -2833,6 +2857,7 @@ byId('limpiarTodo').onclick = () => {
   festivos.clear(); renderFestivos(); feoes.clear(); renderFeoes();
   evaluaciones.clear(); renderEvals(); modulos.splice(0); renderModulos();
   RAs.splice(0); renderRAs(); ceTempList = []; renderCeTemp();
+  UDs.splice(0); selectedPendingKey = null;
   planMap = new Map(); lastAsignaciones = []; calendarRows = [];
   byId('tabla-tbody').innerHTML = '';
   byId('salida').style.display = 'none';
@@ -3321,7 +3346,7 @@ function renderCalendarFromRows(rows) {
   const tbody = byId('tabla-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
-  const raOptions = RAs.map(ra => `<option value="${esc(ra.num)}">${esc(ra.num)}</option>`).join('');
+  const raOptions = UDs.map(ud => `<option value="${esc(ud.nombre)}">${esc(ud.nombre)}</option>`).join('');
 
   rows.forEach((r, idx) => {
     const tr = document.createElement('tr');
@@ -3381,10 +3406,10 @@ function planToText() {
   if (!el) return '';
   // Build readable text from the plan content
   let lines = [];
-  el.querySelectorAll('[data-ra-num]').forEach(card => {
-    const num = card.dataset.raNum, title = card.dataset.raTitle;
-    const ses = card.dataset.raSes, horas = card.dataset.raHoras;
-    lines.push(`\n${num}. ${title}`);
+  el.querySelectorAll('[data-ud-nombre]').forEach(card => {
+    const nombre = card.dataset.udNombre, ras = card.dataset.udRas;
+    const ses = card.dataset.udSes, horas = card.dataset.udHoras;
+    lines.push(`\n${nombre}${ras ? ' (' + ras + ')' : ''}`);
     lines.push(`   Sesiones: ${ses}  |  Horas: ${horas}`);
     card.querySelectorAll('tr').forEach((tr, i) => {
       if (i === 0) return;
@@ -3426,40 +3451,182 @@ byId('exportarPlan').onclick = () => {
   const el = byId('planContent');
   if (!el || !el.children.length) return alert('Genera primero la planificación.');
   const text = el.innerText || el.textContent || '';
-  dlBlob(new Blob([text], {type:'text/plain;charset=utf-8'}), 'Planificacion_RAs.txt');
+  dlBlob(new Blob([text], {type:'text/plain;charset=utf-8'}), 'Planificacion_UDs.txt');
 };
 
-function _buildAsignaciones(sesCounts) {
-  let idx = 0;
-  return RAs.map((ra, raIdx) => {
-    const n = sesCounts[raIdx] || 0;
-    const mis = planSesiones.slice(idx, idx + n);
-    idx += n;
-    return { ra, raIdx, sesiones: mis, horas: mis.reduce((a, s) => a + s.horas, 0) };
-  });
+// === PLANIFICACIÓN POR UDs (Unidades Didácticas) ===
+// Cada UD agrupa CE de uno o varios RA, sean o no contiguos en la numeración
+// de RA. El pool de "CE pendientes" son todos los CE de todos los RA que
+// todavía no están metidos en ninguna UD; se calcula al vuelo, no se guarda.
+function udPendingItems() {
+  const used = new Set();
+  UDs.forEach(u => u.items.forEach(it => used.add(it.raIdx + '_' + it.ceIdx)));
+  const pend = [];
+  RAs.forEach((ra, raIdx) => (ra.ces || []).forEach((ce, ceIdx) => {
+    if (!used.has(raIdx + '_' + ceIdx)) pend.push({ raIdx, ceIdx, ra, ce });
+  }));
+  return pend;
 }
 
-function _renderPlanCards(asignaciones) {
+function selectPendingCE(raIdx, ceIdx) {
+  const key = raIdx + '_' + ceIdx;
+  selectedPendingKey = (selectedPendingKey === key) ? null : key;
+  _renderUDPlan();
+}
+
+function assignSelectedToUD(udIdx) {
+  if (!selectedPendingKey) return;
+  const [raIdx, ceIdx] = selectedPendingKey.split('_').map(Number);
+  UDs[udIdx].items.push({ raIdx, ceIdx });
+  selectedPendingKey = null;
+  _rebuildPlanFromUDs();
+  scheduleAutoSave();
+}
+
+function unassignCE(udIdx, itemIdx) {
+  UDs[udIdx].items.splice(itemIdx, 1);
+  _rebuildPlanFromUDs();
+  scheduleAutoSave();
+}
+
+function renameUD(udIdx, value) {
+  const v = (value || '').trim();
+  if (v) UDs[udIdx].nombre = v;
+  _rebuildPlanFromUDs();
+  scheduleAutoSave();
+}
+
+function moveUDUp(udIdx) {
+  if (udIdx <= 0) return;
+  [UDs[udIdx - 1], UDs[udIdx]] = [UDs[udIdx], UDs[udIdx - 1]];
+  _rebuildPlanFromUDs();
+  scheduleAutoSave();
+}
+
+function moveUDDown(udIdx) {
+  if (udIdx >= UDs.length - 1) return;
+  [UDs[udIdx + 1], UDs[udIdx]] = [UDs[udIdx], UDs[udIdx + 1]];
+  _rebuildPlanFromUDs();
+  scheduleAutoSave();
+}
+
+function addUD() {
+  UDs.push({ id: 'ud_' + Date.now(), nombre: 'UD' + (UDs.length + 1), items: [], sesiones: 0, locked: false });
+  _rebuildPlanFromUDs();
+  scheduleAutoSave();
+}
+
+function deleteUD(udIdx) {
+  const ud = UDs[udIdx];
+  if ((ud.sesiones > 0 || ud.items.length > 0) && !confirm(`«${ud.nombre}» tiene ${ud.items.length} CE y ${ud.sesiones} sesiones asignadas. Se eliminará y sus CE volverán al pool de pendientes. ¿Continuar?`)) return;
+  UDs.splice(udIdx, 1);
+  _rebuildPlanFromUDs();
+  scheduleAutoSave();
+}
+
+function toggleUDLock(udIdx) {
+  UDs[udIdx].locked = !UDs[udIdx].locked;
+  _rebuildPlanFromUDs();
+  scheduleAutoSave();
+}
+
+function adjustUDSessions(udIdx, delta) {
+  const ud = UDs[udIdx];
+  if (!ud || ud.locked || !ud.items.length) return;
+  if (delta > 0) {
+    let maxIdx = -1, maxVal = 0;
+    UDs.forEach((u, i) => { if (i !== udIdx && !u.locked && u.sesiones > maxVal) { maxIdx = i; maxVal = u.sesiones; } });
+    if (maxIdx === -1 || maxVal <= 0) return;
+    UDs[udIdx].sesiones++; UDs[maxIdx].sesiones--;
+  } else {
+    if (ud.sesiones <= 0) return;
+    let minIdx = -1, minVal = Infinity;
+    UDs.forEach((u, i) => { if (i !== udIdx && !u.locked && u.sesiones < minVal) { minIdx = i; minVal = u.sesiones; } });
+    if (minIdx === -1) return;
+    UDs[udIdx].sesiones--; UDs[minIdx].sesiones++;
+  }
+  _rebuildPlanFromUDs();
+  scheduleAutoSave();
+}
+
+function updateGenerarEnabled() {
+  const genBtn = byId('generar');
+  if (!genBtn) return;
+  const pend = udPendingItems();
+  if (pend.length) {
+    genBtn.disabled = true;
+    genBtn.title = `Quedan ${pend.length} CE sin asignar a ninguna UD`;
+    genBtn.style.opacity = '0.5'; genBtn.style.cursor = 'not-allowed';
+  } else {
+    genBtn.disabled = false;
+    genBtn.title = '';
+    genBtn.style.opacity = ''; genBtn.style.cursor = '';
+  }
+}
+
+// Recalcula lastAsignaciones (sesiones concretas de cada UD, en orden
+// cronológico según el orden de las UDs) y repinta la pantalla. Se llama
+// tras cualquier cambio (mover CE, reordenar, +/-, bloquear...).
+function _rebuildPlanFromUDs() {
+  let idx = 0;
+  lastAsignaciones = UDs.map((ud, udIdx) => {
+    const n = Math.max(0, ud.sesiones || 0);
+    const mis = planSesiones.slice(idx, idx + n);
+    idx += n;
+    const raIdxs = [...new Set(ud.items.map(it => it.raIdx))];
+    const raNums = raIdxs.map(ri => RAs[ri]?.num).filter(Boolean);
+    return { ud, udIdx, sesiones: mis, horas: mis.reduce((a, s) => a + s.horas, 0), raIdxs, raNums };
+  });
+  planMap = new Map();
+  lastAsignaciones.forEach(({ ud, sesiones: ses, raNums }) => {
+    const label = ud.nombre + (raNums.length ? ' (' + raNums.join('+') + ')' : '');
+    ses.forEach(s => planMap.set(s.iso + '|' + s.modulo, { raNum: label, raContenido: ud.nombre, udNombre: ud.nombre }));
+  });
+  _renderUDPlan();
+}
+
+function _renderUDPlan() {
   const totalSes = planSesiones.length;
   const planContent = byId('planContent');
+  if (!planContent) return;
 
   const existing = planContent.querySelectorAll('.plan-adjustable');
   existing.forEach(e => e.remove());
 
-  // Bar
+  const pend = udPendingItems();
+
+  // Pool de CE pendientes de asignar
+  if (pend.length) {
+    const poolDiv = document.createElement('div');
+    poolDiv.className = 'plan-adjustable';
+    poolDiv.style.cssText = 'background:#fff7ed;border:2px dashed #f59e0b;border-radius:12px;padding:12px;margin-bottom:14px';
+    let poolHTML = `<div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:8px">⚠️ CE pendientes de asignar a una UD (${pend.length}) — toca uno y luego "📥 Asignar aquí" en la UD destino</div><div style="display:flex;flex-wrap:wrap;gap:6px">`;
+    pend.forEach(({ raIdx, ceIdx, ra, ce }) => {
+      const col = RA_COLORS[raIdx % 8];
+      const key = raIdx + '_' + ceIdx;
+      const sel = selectedPendingKey === key;
+      poolHTML += `<button onclick="selectPendingCE(${raIdx},${ceIdx})" style="background:${col.bg};border:2px solid ${sel ? '#111' : col.border};color:${col.text};border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-weight:${sel ? '800' : '600'}" title="${esc(ce.desc)}">${esc(ra.num)} ${esc(ce.num)}${sel ? ' ✓' : ''}</button>`;
+    });
+    poolHTML += '</div>';
+    poolDiv.innerHTML = poolHTML;
+    planContent.appendChild(poolDiv);
+  }
+
+  // Barra de distribución proporcional
   const tw = document.createElement('div');
   tw.className = 'plan-adjustable'; tw.style.marginBottom = '16px';
   let barHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">Distribución proporcional — <span id="planTotalBadge"></span></div><div class="plan-bar">';
-  asignaciones.forEach(({ ra, raIdx, sesiones: ses }) => {
+  lastAsignaciones.forEach(({ ud, udIdx, sesiones: ses, raIdxs }) => {
     if (!ses.length) return;
-    const pct = (ses.length / totalSes * 100).toFixed(1), col = RA_COLORS[raIdx % 8];
-    barHTML += `<div class="plan-bar-seg" style="flex:${ses.length};background:${col.badge}" title="${esc(ra.num)}: ${ses.length} ses. (${pct}%)">${ra.num}</div>`;
+    const pct = totalSes ? (ses.length / totalSes * 100).toFixed(1) : '0';
+    const col = RA_COLORS[(raIdxs[0] ?? udIdx) % 8];
+    barHTML += `<div class="plan-bar-seg" style="flex:${ses.length};background:${col.badge}" title="${esc(ud.nombre)}: ${ses.length} ses. (${pct}%)">${esc(ud.nombre)}</div>`;
   });
   barHTML += '</div><div class="plan-legend">';
-  asignaciones.forEach(({ ra, raIdx, sesiones: ses, horas }) => {
-    const col = RA_COLORS[raIdx % 8];
-    const lk = planLocked[raIdx] ? ' 🔒' : '';
-    barHTML += `<span class="plan-legend-item" style="background:${col.bg};border:1px solid ${col.border};color:${col.text}"><strong>${esc(ra.num)}</strong> ${ses.length} ses · ${horas.toFixed(1)}h${lk}</span>`;
+  lastAsignaciones.forEach(({ ud, udIdx, sesiones: ses, horas, raIdxs }) => {
+    const col = RA_COLORS[(raIdxs[0] ?? udIdx) % 8];
+    const lk = ud.locked ? ' 🔒' : '';
+    barHTML += `<span class="plan-legend-item" style="background:${col.bg};border:1px solid ${col.border};color:${col.text}"><strong>${esc(ud.nombre)}</strong> ${ses.length} ses · ${horas.toFixed(1)}h${lk}</span>`;
   });
   barHTML += '</div>';
   tw.innerHTML = barHTML;
@@ -3468,49 +3635,63 @@ function _renderPlanCards(asignaciones) {
   const hr = document.createElement('div');
   hr.className = 'hr plan-adjustable'; planContent.appendChild(hr);
 
-  asignaciones.forEach(({ ra, raIdx, sesiones: ses, horas }) => {
-    const col = RA_COLORS[raIdx % 8];
-    const locked = !!planLocked[raIdx];
+  // Tarjetas de UD
+  lastAsignaciones.forEach(({ ud, udIdx, sesiones: ses, horas, raIdxs, raNums }) => {
+    const col = RA_COLORS[(raIdxs[0] ?? udIdx) % 8];
+    const locked = !!ud.locked;
+    const empty = !ud.items.length;
     const card = document.createElement('div');
     card.className = 'plan-adjustable';
+    card.dataset.udNombre = ud.nombre;
+    card.dataset.udRas = raNums.join('+');
+    card.dataset.udSes = ses.length;
+    card.dataset.udHoras = horas.toFixed(1);
     card.style.cssText = `background:${col.bg};border:${locked ? `2px solid ${col.badge}` : `1px solid ${col.border}`};border-radius:12px;padding:14px;margin-bottom:10px;transition:border .15s`;
 
-    let ceHTML = '';
-    if (ra.ces.length) {
-      ceHTML = `<details class="plan-ces"><summary style="color:${col.text}">Criterios de evaluación (${ra.ces.length})</summary><div class="plan-ces-list">`;
-      ra.ces.forEach(ce => { ceHTML += `<div class="plan-ce" style="border-color:${col.border};color:${col.text}"><strong>${esc(ce.num)}</strong> ${esc(ce.desc)}</div>`; });
-      ceHTML += '</div></details>';
-    }
+    const itemsHTML = ud.items.length
+      ? ud.items.map((it, itIdx) => {
+          const ra = RAs[it.raIdx], ce = ra?.ces?.[it.ceIdx];
+          if (!ra || !ce) return '';
+          const c = RA_COLORS[it.raIdx % 8];
+          return `<span style="background:#fff;border:1px solid ${c.border};color:${c.text};border-radius:7px;padding:3px 8px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:5px" title="${esc(ce.desc)}">${esc(ra.num)} ${esc(ce.num)}<button onclick="unassignCE(${udIdx},${itIdx})" title="Quitar de esta UD" style="background:none;border:none;color:${c.text};cursor:pointer;font-weight:800;padding:0;line-height:1">✕</button></span>`;
+        }).join('')
+      : '<span style="font-size:12px;color:var(--muted);font-style:italic">Vacía — toca un CE pendiente y luego "📥 Asignar aquí"</span>';
 
-    const sesId = 'ses_' + raIdx;
+    const sesId = 'udses_' + udIdx;
     const sesRows = ses.map(s => `<tr><td style="padding:4px 8px;color:var(--muted)">${s.fecha}</td><td style="padding:4px 8px;color:var(--muted)">${s.dia}</td><td style="padding:4px 8px;font-size:12px">${esc(s.modulo)}</td><td style="padding:4px 8px;color:var(--muted)">${s.inicio}–${s.fin}</td><td style="padding:4px 8px;font-weight:600;color:${col.text}">${s.horas}h</td></tr>`).join('');
 
-    const adjBtnStyle = locked
+    const adjDisabled = locked || empty;
+    const adjBtnStyle = adjDisabled
       ? `background:#fff4;border:1px solid ${col.border};color:${col.text};border-radius:7px;padding:3px 8px;font-size:12px;font-weight:700;cursor:not-allowed;opacity:0.35;line-height:1`
       : `background:#fff8;border:1px solid ${col.border};color:${col.text};border-radius:7px;padding:3px 8px;font-size:12px;font-weight:700;cursor:pointer;line-height:1`;
     const lockBtnStyle = `background:${locked ? col.badge : '#fff8'};color:${locked ? '#fff' : col.text};border:1px solid ${col.border};border-radius:7px;padding:3px 9px;font-size:13px;cursor:pointer;line-height:1;transition:all .15s`;
     const dateRange = ses.length ? `${ses[0].fecha} → ${ses[ses.length - 1].fecha}` : '—';
-    const disAttr = locked ? 'disabled' : '';
+    const disAttr = adjDisabled ? 'disabled' : '';
+    const canAssignHere = !!selectedPendingKey;
 
     card.innerHTML = `
-      <div class="plan-head">
-        <span style="background:${col.badge};color:#fff;font-weight:800;border-radius:7px;padding:3px 10px;font-size:13px;flex-shrink:0">${esc(ra.num)}</span>
-        <span class="plan-title" title="${esc(ra.contenido)}">${esc(ra.contenido)}</span>
-        <button onclick="const el=document.getElementById('${sesId}');el.style.display=el.style.display==='none'?'block':'none'" style="background:${col.bg};border:1px solid ${col.border};color:${col.text};border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0">Ver sesiones ▾</button>
+      <div class="plan-head" style="flex-wrap:wrap">
+        <button onclick="moveUDUp(${udIdx})" title="Subir (adelanta esta UD en el curso)" style="background:none;border:1px solid ${col.border};color:${col.text};border-radius:6px;cursor:pointer;padding:2px 7px;font-weight:700">↑</button>
+        <button onclick="moveUDDown(${udIdx})" title="Bajar (retrasa esta UD en el curso)" style="background:none;border:1px solid ${col.border};color:${col.text};border-radius:6px;cursor:pointer;padding:2px 7px;font-weight:700">↓</button>
+        <input value="${esc(ud.nombre)}" onchange="renameUD(${udIdx}, this.value)" style="font-weight:800;border:1px solid ${col.border};border-radius:6px;padding:4px 8px;font-size:13px;background:#fff;max-width:140px;flex-shrink:0" />
+        <button onclick="assignSelectedToUD(${udIdx})" ${canAssignHere ? '' : 'disabled'} style="background:${canAssignHere ? col.badge : '#eee'};color:${canAssignHere ? '#fff' : '#999'};border:none;border-radius:7px;padding:5px 10px;font-size:11px;cursor:${canAssignHere ? 'pointer' : 'not-allowed'};font-weight:700;white-space:nowrap">📥 Asignar aquí</button>
+        <button onclick="const el=document.getElementById('${sesId}');el.style.display=el.style.display==='none'?'block':'none'" style="margin-left:auto;background:#fff8;border:1px solid ${col.border};color:${col.text};border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap">Ver sesiones ▾</button>
+        <button onclick="deleteUD(${udIdx})" title="Eliminar UD (sus CE vuelven al pool)" style="background:none;border:1px solid #dc2626;color:#dc2626;border-radius:6px;cursor:pointer;padding:2px 8px">🗑</button>
       </div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin:8px 0">${itemsHTML}</div>
       <div class="plan-meta" style="color:${col.text}">
             <span style="display:flex;align-items:center;gap:4px">
               📅
-              <button onclick="adjustPlanSessions(${raIdx},-1)" ${disAttr} style="${adjBtnStyle}" title="Quitar sesión">−</button>
+              <button onclick="adjustUDSessions(${udIdx},-1)" ${disAttr} style="${adjBtnStyle}" title="Quitar sesión">−</button>
               <strong style="min-width:22px;text-align:center">${ses.length}</strong>
-              <button onclick="adjustPlanSessions(${raIdx},1)" ${disAttr} style="${adjBtnStyle}" title="Añadir sesión">+</button>
+              <button onclick="adjustUDSessions(${udIdx},1)" ${disAttr} style="${adjBtnStyle}" title="Añadir sesión">+</button>
               sesiones
             </span>
-            <button onclick="togglePlanLock(${raIdx})" style="${lockBtnStyle}" title="${locked ? 'Desbloquear' : 'Bloquear este valor'}">${locked ? '🔒 Bloqueado' : '🔓 Bloquear'}</button>
+            <button onclick="toggleUDLock(${udIdx})" style="${lockBtnStyle}" title="${locked ? 'Desbloquear' : 'Bloquear este valor'}">${locked ? '🔒 Bloqueado' : '🔓 Bloquear'}</button>
             <span>⏱ <strong>${horas.toFixed(1)}h</strong></span>
             <span>🗓 ${dateRange}</span>
+            ${raNums.length ? `<span>🎯 ${esc(raNums.join(' + '))}</span>` : ''}
       </div>
-      ${ceHTML}
       <div id="${sesId}" style="display:none;margin-top:10px;overflow:auto;max-height:200px;border-radius:8px;border:1px solid ${col.border}">
         <table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#fff">
           <th style="padding:5px 8px;text-align:left;color:var(--muted)">Fecha</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Día</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Módulo</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Horario</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Horas</th>
@@ -3519,45 +3700,24 @@ function _renderPlanCards(asignaciones) {
     planContent.appendChild(card);
   });
 
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn ghost plan-adjustable';
+  addBtn.style.cssText = 'margin-bottom:10px';
+  addBtn.textContent = '+ Añadir UD';
+  addBtn.onclick = addUD;
+  planContent.appendChild(addBtn);
+
   const nota = document.createElement('p');
   nota.className = 'plan-adjustable';
   nota.style.cssText = 'font-size:12px;color:var(--muted);margin-top:4px;font-style:italic';
-  nota.textContent = 'Usa + / − para ajustar. Bloquea un RA para fijarlo; los demás absorben los cambios. Genera el calendario para ver «RA Planificado».';
+  nota.textContent = 'Usa ↑/↓ para reordenar las UD (fija el orden en que se imparten), +/− para ajustar sesiones y 🔒 para fijar un valor. El botón de generar calendario se habilita cuando no queden CE pendientes.';
   planContent.appendChild(nota);
 
   const badge = byId('planTotalBadge');
   if (badge) badge.textContent = `${totalSes} sesiones totales`;
-}
 
-function togglePlanLock(raIdx) {
-  planLocked[raIdx] = !planLocked[raIdx];
-  _renderPlanCards(_buildAsignaciones(planSesCounts));
-}
-
-function adjustPlanSessions(raIdx, delta) {
-  if (planLocked[raIdx]) return;
-  if (delta > 0) {
-    // Steal from the unlocked RA with most sessions
-    let maxIdx = -1, maxVal = 0;
-    planSesCounts.forEach((c, i) => { if (i !== raIdx && !planLocked[i] && c > maxVal) { maxIdx = i; maxVal = c; } });
-    if (maxIdx === -1 || maxVal <= 0) return;
-    planSesCounts[raIdx]++;
-    planSesCounts[maxIdx]--;
-  } else {
-    if (planSesCounts[raIdx] <= 0) return;
-    // Give to the unlocked RA with fewest sessions
-    let minIdx = -1, minVal = Infinity;
-    planSesCounts.forEach((c, i) => { if (i !== raIdx && !planLocked[i] && c < minVal) { minIdx = i; minVal = c; } });
-    if (minIdx === -1) return;
-    planSesCounts[raIdx]--;
-    planSesCounts[minIdx]++;
-  }
-  const asignaciones = _buildAsignaciones(planSesCounts);
-  lastAsignaciones = asignaciones;
-  planMap = new Map();
-  asignaciones.forEach(({ ra, sesiones: ses }) => ses.forEach(s => planMap.set(s.iso + '|' + s.modulo, { raNum: ra.num, raContenido: ra.contenido })));
-  _renderPlanCards(asignaciones);
-  scheduleAutoSave();
+  updateGenerarEnabled();
 }
 
 byId('planificar').onclick = () => {
@@ -3569,7 +3729,6 @@ byId('planificar').onclick = () => {
   if (dF < dI) return alert('Fecha fin debe ser >= inicio');
 
   planSesiones = [];
-  planLocked = RAs.map(() => false);
   const oneDay = 86400000;
   for (let t = dI.getTime(); t <= dF.getTime(); t += oneDay) {
     const d = new Date(t), iso = isoDate(d);
@@ -3582,16 +3741,21 @@ byId('planificar').onclick = () => {
   if (!planSesiones.length) return alert('No hay sesiones disponibles en ese rango.');
 
   const totalSes = planSesiones.length, totalHoras = planSesiones.reduce((a, s) => a + s.horas, 0), nRAs = RAs.length;
-  const pesos = RAs.map(ra => Math.max(1, ra.ces.length)), totalPeso = pesos.reduce((a, p) => a + p, 0);
-  planSesCounts = pesos.map(p => Math.round(totalSes * p / totalPeso));
-  const diff = totalSes - planSesCounts.reduce((a, v) => a + v, 0);
-  if (diff > 0) for (let i = 0; i < diff; i++) planSesCounts[i]++;
-  if (diff < 0) for (let i = 0; i < -diff; i++) planSesCounts[i]--;
 
-  const asignaciones = _buildAsignaciones(planSesCounts);
-  lastAsignaciones = asignaciones;
-  planMap = new Map();
-  asignaciones.forEach(({ ra, sesiones: ses }) => ses.forEach(s => planMap.set(s.iso + '|' + s.modulo, { raNum: ra.num, raContenido: ra.contenido })));
+  // Reconstruye las UD por defecto: una por RA, con todos sus CE, sesiones
+  // proporcionales al nº de CE (igual criterio que antes por RA). El
+  // profesor reorganiza después mezclando/reordenando UD a su gusto.
+  UDs.splice(0);
+  RAs.forEach((ra, raIdx) => {
+    UDs.push({ id: 'ud' + (raIdx + 1), nombre: 'UD' + (raIdx + 1), items: (ra.ces || []).map((ce, ceIdx) => ({ raIdx, ceIdx })), sesiones: 0, locked: false });
+  });
+  const pesos = UDs.map(u => Math.max(1, u.items.length)), totalPeso = pesos.reduce((a, p) => a + p, 0);
+  UDs.forEach((u, i) => { u.sesiones = Math.round(totalSes * pesos[i] / totalPeso); });
+  let diff = totalSes - UDs.reduce((a, u) => a + u.sesiones, 0);
+  let gi = 0;
+  while (diff !== 0 && UDs.length) { UDs[gi % UDs.length].sesiones += diff > 0 ? 1 : -1; diff += diff > 0 ? -1 : 1; gi++; }
+
+  selectedPendingKey = null;
 
   const planContent = byId('planContent');
   planContent.innerHTML = '';
@@ -3599,12 +3763,12 @@ byId('planificar').onclick = () => {
   // Stats (fixed header, not rebuilt on adjust)
   const resumen = document.createElement('div');
   resumen.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px';
-  [{ label: 'Sesiones totales', val: totalSes, icon: '📅' }, { label: 'Horas totales', val: totalHoras.toFixed(1) + 'h', icon: '⏱' }, { label: 'RAs', val: nRAs, icon: '🎯' }, { label: 'Media por RA', val: (totalSes / nRAs).toFixed(1) + ' ses.', icon: '📊' }].forEach(s => {
+  [{ label: 'Sesiones totales', val: totalSes, icon: '📅' }, { label: 'Horas totales', val: totalHoras.toFixed(1) + 'h', icon: '⏱' }, { label: 'RAs', val: nRAs, icon: '🎯' }, { label: 'UDs', val: UDs.length, icon: '📚' }].forEach(s => {
     resumen.innerHTML += `<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px">${s.icon}</div><div style="font-size:17px;font-weight:700;margin:4px 0">${s.val}</div><div style="font-size:11px;color:var(--muted)">${s.label}</div></div>`;
   });
   planContent.appendChild(resumen);
 
-  _renderPlanCards(asignaciones);
+  _rebuildPlanFromUDs();
 
   byId('salidaPlan').style.display = 'block';
   byId('plan-empty-state').style.display = 'none';
@@ -3787,12 +3951,13 @@ function coreXML(){const n=new Date().toISOString();return`<?xml version="1.0" e
 function appXML(){return`<?xml version="1.0" encoding="UTF-8"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Microsoft Excel</Application></Properties>`;}
 function planWSXML(){
   if(!lastAsignaciones.length)return null;
-  const m=[['Nº RA','Descripción RA','Total sesiones','Total horas','Fecha inicio','Fecha fin','','CEs (código)','CEs (descripción)']];
+  const m=[['UD','RA incluidos','Total sesiones','Total horas','Fecha inicio','Fecha fin','','CEs (código)','CEs (descripción)']];
   m.push([]);
-  lastAsignaciones.forEach(({ra,sesiones:ses,horas})=>{
+  lastAsignaciones.forEach(({ud,sesiones:ses,horas,raNums})=>{
     if(!ses.length)return;
-    m.push([ra.num,ra.contenido,ses.length,+horas.toFixed(2),ses[0].fecha,ses[ses.length-1].fecha,'',ra.ces[0]?.num||'',ra.ces[0]?.desc||'']);
-    for(let ci=1;ci<ra.ces.length;ci++) m.push(['','','','','','','',ra.ces[ci].num,ra.ces[ci].desc]);
+    const cesFlat = (ud.items||[]).map(it=>{const ra=RAs[it.raIdx],ce=ra?.ces?.[it.ceIdx];return ce?{num:ra.num+' '+ce.num,desc:ce.desc}:null;}).filter(Boolean);
+    m.push([ud.nombre,(raNums||[]).join('+'),ses.length,+horas.toFixed(2),ses[0].fecha,ses[ses.length-1].fecha,'',cesFlat[0]?.num||'',cesFlat[0]?.desc||'']);
+    for(let ci=1;ci<cesFlat.length;ci++) m.push(['','','','','','','',cesFlat[ci].num,cesFlat[ci].desc]);
     m.push([]);
     m.push(['','Fecha','Día','Módulo','Inicio','Fin','Horas','Nº sesión','']);
     ses.forEach((s,i)=>m.push(['',s.fecha,s.dia,s.modulo,s.inicio,s.fin,s.horas,i+1,'']));
@@ -3802,10 +3967,10 @@ function planWSXML(){
 }
 byId('descargarXLSX').onclick=()=>{
   if(!calendarRows.length)return alert('Primero genera el calendario');
-  const h=['Fecha','Día','Tipo','Módulo','Inicio','Fin','Horas','Observaciones','RA Planificado'];
+  const h=['Fecha','Día','Tipo','Módulo','Inicio','Fin','Horas','Observaciones','UD Planificada'];
   const b=calendarRows.map(r=>[r.fecha,r.dia,r.tipo,r.modulo,r.inicio,r.fin,r.horas,r.obs||'',r.raNum||'']);
   const planXML=planWSXML();
-  const sh=planXML?[{name:'Calendario'},{name:'RAs y CEs'},{name:'Planificación por RAs'}]:[{name:'Calendario'},{name:'RAs y CEs'}];
+  const sh=planXML?[{name:'Calendario'},{name:'RAs y CEs'},{name:'Planificación por UDs'}]:[{name:'Calendario'},{name:'RAs y CEs'}];
   const files=[
     {name:'[Content_Types].xml',data:s2u8(ctXML(sh))},
     {name:'_rels/.rels',data:s2u8(rootRels())},
