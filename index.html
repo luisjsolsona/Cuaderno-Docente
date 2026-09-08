@@ -3585,6 +3585,28 @@ function _rebuildPlanFromUDs() {
   _renderUDPlan();
 }
 
+// Agrupa CE (pendientes o ya asignados a una UD) por su RA de origen, para
+// poder mostrar el texto completo del RA una sola vez y luego el de cada CE,
+// en vez de chips truncados con el contenido solo visible en un tooltip.
+function _groupPendingByRA(pend) {
+  const map = new Map();
+  pend.forEach(p => {
+    if (!map.has(p.raIdx)) map.set(p.raIdx, { raIdx: p.raIdx, ra: p.ra, items: [] });
+    map.get(p.raIdx).items.push(p);
+  });
+  return [...map.values()];
+}
+function _groupItemsByRA(items) {
+  const map = new Map();
+  items.forEach((it, itIdx) => {
+    const ra = RAs[it.raIdx], ce = ra?.ces?.[it.ceIdx];
+    if (!ra || !ce) return;
+    if (!map.has(it.raIdx)) map.set(it.raIdx, { raIdx: it.raIdx, ra, ceItems: [] });
+    map.get(it.raIdx).ceItems.push({ ce, ceIdx: it.ceIdx, itIdx });
+  });
+  return [...map.values()];
+}
+
 function _renderUDPlan() {
   const totalSes = planSesiones.length;
   const planContent = byId('planContent');
@@ -3600,14 +3622,25 @@ function _renderUDPlan() {
     const poolDiv = document.createElement('div');
     poolDiv.className = 'plan-adjustable';
     poolDiv.style.cssText = 'background:#fff7ed;border:2px dashed #f59e0b;border-radius:12px;padding:12px;margin-bottom:14px';
-    let poolHTML = `<div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:8px">⚠️ CE pendientes de asignar a una UD (${pend.length}) — toca uno y luego "📥 Asignar aquí" en la UD destino</div><div style="display:flex;flex-wrap:wrap;gap:6px">`;
-    pend.forEach(({ raIdx, ceIdx, ra, ce }) => {
-      const col = RA_COLORS[raIdx % 8];
-      const key = raIdx + '_' + ceIdx;
-      const sel = selectedPendingKey === key;
-      poolHTML += `<button onclick="selectPendingCE(${raIdx},${ceIdx})" style="background:${col.bg};border:2px solid ${sel ? '#111' : col.border};color:${col.text};border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-weight:${sel ? '800' : '600'}" title="${esc(ce.desc)}">${esc(ra.num)} ${esc(ce.num)}${sel ? ' ✓' : ''}</button>`;
+    let poolHTML = `<div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:10px">⚠️ CE pendientes de asignar a una UD (${pend.length}) — toca uno y luego "📥 Asignar aquí" en la UD destino</div>`;
+    _groupPendingByRA(pend).forEach(g => {
+      const col = RA_COLORS[g.raIdx % 8];
+      poolHTML += `<div style="margin-bottom:10px">
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:5px">
+          <span style="background:${col.badge};color:#fff;font-weight:800;border-radius:6px;padding:2px 8px;font-size:11px;white-space:nowrap;flex-shrink:0">${esc(g.ra.num)}</span>
+          <span style="font-size:12px;font-weight:600;color:${col.text}">${esc(g.ra.contenido)}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">`;
+      g.items.forEach(({ raIdx, ceIdx, ce }) => {
+        const key = raIdx + '_' + ceIdx;
+        const sel = selectedPendingKey === key;
+        poolHTML += `<button onclick="selectPendingCE(${raIdx},${ceIdx})" style="text-align:left;display:flex;gap:8px;align-items:flex-start;background:${sel ? col.bg : '#fff'};border:2px solid ${sel ? '#111' : col.border};border-radius:7px;padding:6px 9px;cursor:pointer">
+          <span style="font-weight:700;color:${col.text};white-space:nowrap;flex-shrink:0">${esc(ce.num)}${sel ? ' ✓' : ''}</span>
+          <span style="font-size:12px;color:var(--ink)">${esc(ce.desc)}</span>
+        </button>`;
+      });
+      poolHTML += `</div></div>`;
     });
-    poolHTML += '</div>';
     poolDiv.innerHTML = poolHTML;
     planContent.appendChild(poolDiv);
   }
@@ -3649,11 +3682,21 @@ function _renderUDPlan() {
     card.style.cssText = `background:${col.bg};border:${locked ? `2px solid ${col.badge}` : `1px solid ${col.border}`};border-radius:12px;padding:14px;margin-bottom:10px;transition:border .15s`;
 
     const itemsHTML = ud.items.length
-      ? ud.items.map((it, itIdx) => {
-          const ra = RAs[it.raIdx], ce = ra?.ces?.[it.ceIdx];
-          if (!ra || !ce) return '';
-          const c = RA_COLORS[it.raIdx % 8];
-          return `<span style="background:#fff;border:1px solid ${c.border};color:${c.text};border-radius:7px;padding:3px 8px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:5px" title="${esc(ce.desc)}">${esc(ra.num)} ${esc(ce.num)}<button onclick="unassignCE(${udIdx},${itIdx})" title="Quitar de esta UD" style="background:none;border:none;color:${c.text};cursor:pointer;font-weight:800;padding:0;line-height:1">✕</button></span>`;
+      ? _groupItemsByRA(ud.items).map(g => {
+          if (!g.ra) return '';
+          const c = RA_COLORS[g.raIdx % 8];
+          const ceRows = g.ceItems.map(({ ce, itIdx }) => `<div style="display:flex;gap:8px;align-items:flex-start;background:#fff;border:1px solid ${c.border};border-radius:6px;padding:6px 9px;margin-top:4px">
+              <span style="font-weight:700;color:${c.text};white-space:nowrap;flex-shrink:0">${esc(ce.num)}</span>
+              <span style="flex:1;font-size:12px;color:var(--ink)">${esc(ce.desc)}</span>
+              <button onclick="unassignCE(${udIdx},${itIdx})" title="Quitar de esta UD" style="background:none;border:none;color:${c.text};cursor:pointer;font-weight:800;padding:0;line-height:1;flex-shrink:0">✕</button>
+            </div>`).join('');
+          return `<div style="margin-bottom:8px">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <span style="background:${c.badge};color:#fff;font-weight:800;border-radius:6px;padding:2px 8px;font-size:11px;white-space:nowrap;flex-shrink:0">${esc(g.ra.num)}</span>
+              <span style="font-size:12px;font-weight:600;color:${c.text}">${esc(g.ra.contenido)}</span>
+            </div>
+            ${ceRows}
+          </div>`;
         }).join('')
       : '<span style="font-size:12px;color:var(--muted);font-style:italic">Vacía — toca un CE pendiente y luego "📥 Asignar aquí"</span>';
 
