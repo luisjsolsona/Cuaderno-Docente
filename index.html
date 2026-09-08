@@ -827,7 +827,6 @@
               <option value="feoe">FEOE</option>
               <option value="eval">Evaluación</option>
             </select>
-            <select id="filter-modulo" onchange="applyCalFilter()"><option value="">Todos los módulos</option></select>
             <select id="filter-ra" onchange="applyCalFilter()"><option value="">Todas las UD</option></select>
             <input type="text" id="filter-obs" placeholder="Buscar observaciones…" oninput="applyCalFilter()" style="flex:1 1 160px;max-width:220px" />
             <span id="filter-count"></span>
@@ -838,12 +837,12 @@
             <table id="tabla">
               <thead><tr>
                 <th>Fecha</th><th>Día</th><th>Tipo</th><th>Módulo</th>
-                <th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>UD Planificada</th>
+                <th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>UD Planificada</th><th>RA</th><th>CE</th>
               </tr></thead>
               <tbody id="tabla-tbody"></tbody>
             </table>
           </div>
-          <p class="note" style="margin-top:8px">El .xlsx incluye: hoja <strong>Calendario</strong>, hoja <strong>RAs y CEs</strong> y (si planificaste) hoja <strong>Planificación por RAs</strong>.</p>
+          <p class="note" style="margin-top:8px">El .xlsx incluye: hoja <strong>Calendario</strong>, hoja <strong>RAs y CEs</strong> y (si planificaste) hoja <strong>Planificación por UDs</strong>.</p>
         </div>
         <div id="calendario-empty-state" class="tab-empty">
           <div class="tab-empty-icon">📆</div>
@@ -1766,7 +1765,7 @@ function renderAdminCuaderno(data) {
     html += `<div class="card" style="margin-bottom:12px"><h2>📆 Calendario (${rows.length} filas)</h2><div class="table-wrap" style="max-height:50vh"><table>
       <thead><tr>
         <th>Fecha</th><th>Día</th><th>Tipo</th><th>Módulo</th>
-        <th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>UD</th>
+        <th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>UD</th><th>RA</th><th>CE</th>
       </tr></thead><tbody>`;
     rows.forEach(r => {
       let badge = '';
@@ -1777,7 +1776,7 @@ function renderAdminCuaderno(data) {
       html += `<tr class="${r.tipo==='festivo'||r.tipo==='eval'?'holiday':r.tipo==='feoe'?'feoe-row':''}">
         <td>${r.fecha}</td><td>${r.dia}</td><td>${badge}</td><td>${esc(r.modulo)}</td>
         <td>${r.inicio}</td><td>${r.fin}</td><td>${r.horas||''}</td>
-        <td>${esc(r.obs||'')}</td><td>${esc(r.raNum||'')}</td>
+        <td>${esc(r.obs||'')}</td><td>${esc(r.raNum||'')}</td><td>${esc(r.raList||'')}</td><td style="font-size:11px">${esc(r.ceList||'')}</td>
       </tr>`;
     });
     html += `</tbody></table></div></div>`;
@@ -3286,12 +3285,12 @@ function generateRows(dIni, dFin) {
     const d=new Date(t), iso=isoDate(d), dia=DIAS[d.getDay()];
     const isF=festivos.has(iso), isFe=feoes.has(iso), ev=evaluaciones.get(iso), isEB=!!(ev&&ev.bloquea);
     if (isF) stats.countFestivos++; if (isFe) stats.countFeoe++;
-    if (ev) { rows.push({tipo:'eval',iso,fecha:fmtDate(d),dia,modulo:'—',inicio:'—',fin:'—',horas:'',obs:'Evaluación: '+(ev.desc||''),raNum:''}); stats.totEval++; }
+    if (ev) { rows.push({tipo:'eval',iso,fecha:fmtDate(d),dia,modulo:'—',inicio:'—',fin:'—',horas:'',obs:'Evaluación: '+(ev.desc||''),raNum:'',raList:'',ceList:''}); stats.totEval++; }
     const ses=[];
     if (!isF&&!isFe&&!isEB) modulos.forEach(m => {
       if (m.dow===d.getDay()) {
         const h=horasEntre(m.inicio,m.fin);
-        ses.push({tipo:'clase',iso,fecha:fmtDate(d),dia,modulo:m.nombre,inicio:m.inicio,fin:m.fin,horas:+h.toFixed(2),obs:'',raNum:''});
+        ses.push({tipo:'clase',iso,fecha:fmtDate(d),dia,modulo:m.nombre,inicio:m.inicio,fin:m.fin,horas:+h.toFixed(2),obs:'',raNum:'',raList:'',ceList:''});
       }
     });
     if (ses.length) { ses.forEach(r=>{ rows.push(r); stats.totSes++; stats.totalHoras+=r.horas; }); }
@@ -3299,7 +3298,7 @@ function generateRows(dIni, dFin) {
       let obs='',tipo='vacio';
       if (isF) {tipo='festivo';obs='Festivo'+(festivos.get(iso)?': '+festivos.get(iso):'');}
       else if (isFe) {tipo='feoe';obs='FEOE'+(feoes.get(iso)?': '+feoes.get(iso):'');}
-      rows.push({tipo,iso,fecha:fmtDate(d),dia,modulo:'—',inicio:'—',fin:'—',horas:'',obs,raNum:''});
+      rows.push({tipo,iso,fecha:fmtDate(d),dia,modulo:'—',inicio:'—',fin:'—',horas:'',obs,raNum:'',raList:'',ceList:''});
     }
     stats.diasTotales++;
   }
@@ -3318,7 +3317,7 @@ byId('generar').onclick = () => {
   // Merge planMap data into rows
   rows.forEach(r => {
     const plan = planMap.get(r.iso+'|'+r.modulo);
-    if (plan && !r.raNum) r.raNum = plan.raNum;
+    if (plan && !r.raNum) { r.raNum = plan.raNum; r.raList = plan.raList; r.ceList = plan.ceList; }
   });
 
   // Merge existing user edits from calendarRows if same dates
@@ -3328,7 +3327,7 @@ byId('generar').onclick = () => {
     const existing = existingMap.get(key);
     if (existing) {
       if (existing.obs && existing.obs !== r.obs) r.obs = existing.obs;
-      if (existing.raNum) r.raNum = existing.raNum;
+      if (existing.raNum) { r.raNum = existing.raNum; r.raList = existing.raList || ''; r.ceList = existing.ceList || ''; }
     }
   });
 
@@ -3374,6 +3373,11 @@ function renderCalendarFromRows(rows) {
     raSelect.value = r.raNum || '';
     raSelect.addEventListener('change', () => {
       calendarRows[idx].raNum = raSelect.value;
+      const ud = UDs.find(u => u.nombre === raSelect.value);
+      calendarRows[idx].raList = ud ? [...new Set(ud.items.map(it => RAs[it.raIdx]?.num))].filter(Boolean).join(' + ') : '';
+      calendarRows[idx].ceList = ud ? udCeLabel(ud) : '';
+      tdRAtxt.textContent = calendarRows[idx].raList;
+      tdCEtxt.textContent = calendarRows[idx].ceList;
       scheduleAutoSave();
     });
 
@@ -3381,11 +3385,19 @@ function renderCalendarFromRows(rows) {
     tdObs.appendChild(obsInput);
     const tdRA = document.createElement('td');
     tdRA.appendChild(raSelect);
+    const tdRAtxt = document.createElement('td');
+    tdRAtxt.textContent = r.raList || '';
+    const tdCEtxt = document.createElement('td');
+    tdCEtxt.textContent = r.ceList || '';
+    tdCEtxt.style.fontSize = '11px';
+    tdCEtxt.style.maxWidth = '260px';
 
     tr.innerHTML = `<td class="c-fecha">${r.fecha}</td><td class="c-dia">${r.dia}</td><td class="c-tipo">${badge}</td><td class="c-mod">${esc(r.modulo)}</td><td class="c-ini">${r.inicio}</td><td class="c-fin">${r.fin}</td><td class="c-horas">${r.horas||''}</td>`;
-    tdObs.className = 'c-obs'; tdRA.className = 'c-ra';
+    tdObs.className = 'c-obs'; tdRA.className = 'c-ra'; tdRAtxt.className = 'c-ra-list'; tdCEtxt.className = 'c-ce-list';
     tr.appendChild(tdObs);
     tr.appendChild(tdRA);
+    tr.appendChild(tdRAtxt);
+    tr.appendChild(tdCEtxt);
     tbody.appendChild(tr);
   });
 
@@ -3567,6 +3579,14 @@ function updateGenerarEnabled() {
 // Recalcula lastAsignaciones (sesiones concretas de cada UD, en orden
 // cronológico según el orden de las UDs) y repinta la pantalla. Se llama
 // tras cualquier cambio (mover CE, reordenar, +/-, bloquear...).
+// Etiqueta de texto "RA1 a), RA1 b), RA8 a)" con los CE que lleva una UD.
+function udCeLabel(ud) {
+  return (ud.items || []).map(it => {
+    const ra = RAs[it.raIdx], ce = ra?.ces?.[it.ceIdx];
+    return ce ? (ra.num + ' ' + ce.num) : null;
+  }).filter(Boolean).join(', ');
+}
+
 function _rebuildPlanFromUDs() {
   let idx = 0;
   lastAsignaciones = UDs.map((ud, udIdx) => {
@@ -3579,8 +3599,10 @@ function _rebuildPlanFromUDs() {
   });
   planMap = new Map();
   lastAsignaciones.forEach(({ ud, sesiones: ses, raNums }) => {
-    const label = ud.nombre + (raNums.length ? ' (' + raNums.join('+') + ')' : '');
-    ses.forEach(s => planMap.set(s.iso + '|' + s.modulo, { raNum: label, raContenido: ud.nombre, udNombre: ud.nombre }));
+    // raNum guarda el nombre "pelado" de la UD (tiene que coincidir exactamente
+    // con el value de las <option> del desplegable de la tabla de calendario).
+    const entry = { raNum: ud.nombre, raList: raNums.join(' + '), ceList: udCeLabel(ud), udNombre: ud.nombre };
+    ses.forEach(s => planMap.set(s.iso + '|' + s.modulo, entry));
   });
   _renderUDPlan();
 }
@@ -3822,7 +3844,6 @@ byId('planificar').onclick = () => {
 // === CALENDAR FILTER ===
 function applyCalFilter() {
   const tipo   = byId('filter-tipo')?.value   || '';
-  const modulo = byId('filter-modulo')?.value || '';
   const ra     = byId('filter-ra')?.value     || '';
   const obs    = (byId('filter-obs')?.value   || '').toLowerCase();
   const rows   = byId('tabla-tbody')?.querySelectorAll('tr');
@@ -3832,7 +3853,6 @@ function applyCalFilter() {
     if (!r) return;
     const show =
       (!tipo   || r.tipo   === tipo) &&
-      (!modulo || r.modulo === modulo) &&
       (!ra     || r.raNum  === ra) &&
       (!obs    || (r.obs||'').toLowerCase().includes(obs) || (r.modulo||'').toLowerCase().includes(obs));
     tr.style.display = show ? '' : 'none';
@@ -3843,20 +3863,17 @@ function applyCalFilter() {
 }
 
 function clearCalFilter() {
-  ['filter-tipo','filter-modulo','filter-ra','filter-obs'].forEach(id => {
+  ['filter-tipo','filter-ra','filter-obs'].forEach(id => {
     const el = byId(id); if (el) el.value = '';
   });
   applyCalFilter();
 }
 
 function updateCalFilterDropdowns() {
-  const moduloSel = byId('filter-modulo');
-  const raSel     = byId('filter-ra');
-  if (!moduloSel || !raSel) return;
-  const mods = [...new Set(calendarRows.map(r => r.modulo).filter(Boolean))].sort();
-  const ras  = [...new Set(calendarRows.map(r => r.raNum).filter(Boolean))].sort();
-  moduloSel.innerHTML = '<option value="">Todos los módulos</option>' + mods.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
-  raSel.innerHTML     = '<option value="">Todos los RAs</option>'     + ras.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+  const raSel = byId('filter-ra');
+  if (!raSel) return;
+  const ras = [...new Set(calendarRows.map(r => r.raNum).filter(Boolean))].sort();
+  raSel.innerHTML = '<option value="">Todas las UD</option>' + ras.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
 }
 
 // === SEGUIMIENTO ===
@@ -3925,7 +3942,7 @@ function renderSeguimiento() {
 function dlBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},100);}
 function buildCSV(sep=';'){
   const h=Array.from(byId('tabla').querySelectorAll('thead th')).map(t=>t.textContent.trim());
-  const b=calendarRows.map(r=>[r.fecha,r.dia,r.tipo,r.modulo,r.inicio,r.fin,r.horas,r.obs||'',r.raNum||'']);
+  const b=calendarRows.map(r=>[r.fecha,r.dia,r.tipo,r.modulo,r.inicio,r.fin,r.horas,r.obs||'',r.raNum||'',r.raList||'',r.ceList||'']);
   const e=s=>'"'+String(s).replace(/"/g,'""')+'"',C='\r\n';
   return 'sep='+sep+C+[h,...b].map(r=>r.map(e).join(sep)).join(C);
 }
@@ -4010,8 +4027,8 @@ function planWSXML(){
 }
 byId('descargarXLSX').onclick=()=>{
   if(!calendarRows.length)return alert('Primero genera el calendario');
-  const h=['Fecha','Día','Tipo','Módulo','Inicio','Fin','Horas','Observaciones','UD Planificada'];
-  const b=calendarRows.map(r=>[r.fecha,r.dia,r.tipo,r.modulo,r.inicio,r.fin,r.horas,r.obs||'',r.raNum||'']);
+  const h=['Fecha','Día','Tipo','Módulo','Inicio','Fin','Horas','Observaciones','UD Planificada','RA','CE'];
+  const b=calendarRows.map(r=>[r.fecha,r.dia,r.tipo,r.modulo,r.inicio,r.fin,r.horas,r.obs||'',r.raNum||'',r.raList||'',r.ceList||'']);
   const planXML=planWSXML();
   const sh=planXML?[{name:'Calendario'},{name:'RAs y CEs'},{name:'Planificación por UDs'}]:[{name:'Calendario'},{name:'RAs y CEs'}];
   const files=[
