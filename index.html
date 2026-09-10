@@ -252,22 +252,22 @@
     .doc-tab-panel { padding-top: 16px; }
 
     /* === HOME PANEL === */
-    .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-top: 16px; }
-    .home-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; transition: .15s; display: flex; flex-direction: column; gap: 8px; }
+    .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 16px; }
+    .home-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; transition: .15s; display: flex; flex-direction: column; gap: 12px; }
     .home-card.clickable { cursor: pointer; }
     .home-card.clickable:hover { border-color: var(--accent); box-shadow: var(--shadow-lg); transform: translateY(-2px); }
-    .home-card-new { border: 2px dashed var(--border); background: transparent; align-items: center; justify-content: center; min-height: 120px; cursor: pointer; color: var(--muted); font-size: 15px; font-weight: 600; }
+    .home-card-new { border: 2px dashed var(--border); background: transparent; align-items: center; justify-content: center; min-height: 140px; cursor: pointer; color: var(--muted); font-size: 15px; font-weight: 600; }
     .home-card-new:hover { border-color: var(--accent); color: var(--accent); background: #eff6ff; transform: translateY(-2px); }
-    .home-card-icon { width: 44px; height: 44px; border-radius: 12px; background: #dbeafe; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
-    .home-card-title { font-weight: 700; font-size: 15px; }
-    .home-card-meta { font-size: 12px; color: var(--muted); }
-    .home-card-quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
-    .home-card-quick .btn { justify-content: center; background: #eff6ff; border-color: #bfdbfe; color: var(--accent); font-weight: 600; }
+    .home-card-icon { width: 52px; height: 52px; border-radius: 14px; background: #dbeafe; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+    .home-card-title { font-weight: 700; font-size: 16px; line-height: 1.4; }
+    .home-card-meta { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .home-card-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; margin-top: 10px; }
+    .home-card-quick .btn { justify-content: center; text-align: center; white-space: normal; padding: 10px 8px; background: #eff6ff; border-color: #bfdbfe; color: var(--accent); font-weight: 600; }
     .home-card-quick .btn:disabled { background: var(--bg); border-color: var(--border); color: var(--muted); font-weight: 500; }
-    .home-card-actions { display: flex; justify-content: flex-end; gap: 4px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); }
-    .home-card-actions .btn-link { font-size: 12px; color: var(--muted); }
+    .home-card-actions { display: flex; justify-content: center; gap: 18px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); }
+    .home-card-actions .btn-link { font-size: 13px; color: var(--muted); }
     .home-card-actions .btn-link:hover { background: var(--bg); color: var(--ink); }
-    .home-card-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+    .home-card-badges { display: flex; gap: 7px; flex-wrap: wrap; justify-content: center; }
     .tab-empty { text-align: center; padding: 60px 20px; color: var(--muted); }
     .tab-empty-icon { font-size: 48px; margin-bottom: 12px; }
 
@@ -422,7 +422,7 @@
       .home-grid { grid-template-columns: 1fr; }
       .home-card-quick { grid-template-columns: 1fr; gap: 8px; }
       .home-card-quick .btn { min-height: 44px; font-size: 14px; }
-      .home-card-actions { justify-content: space-between; }
+      .home-card-actions { justify-content: center; gap: 20px; }
       .home-card-actions .btn-link { min-height: 40px; font-size: 13px; padding: 6px 12px; }
       .modal { padding: 18px; max-height: 92vh; overflow-y: auto; }
       .modal .modal-footer { flex-wrap: wrap; }
@@ -1170,7 +1170,7 @@ function buildCuadernoCard(c, { editable = true } = {}) {
   const ownerLine = c.owner_name ? `<div class="home-card-meta" style="color:var(--accent)">👤 ${esc(c.owner_name)}</div>` : '';
   const cicloLine = c.ciclo ? `<div class="home-card-meta" style="font-weight:600;color:var(--ink)">${esc(c.ciclo)}</div>` : '';
   card.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px">
+    <div style="display:flex;align-items:flex-start;gap:14px">
       <div class="home-card-icon">${editable ? '📋' : '👁'}</div>
       <div style="flex:1;min-width:0">
         <div class="home-card-title">${esc(c.title || 'Mi Cuaderno')}</div>
