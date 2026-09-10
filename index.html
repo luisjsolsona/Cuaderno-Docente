@@ -201,11 +201,9 @@
     .cuaderno-info { flex: 1 1 240px; min-width: 0; }
     .cuaderno-name { font-weight: 700; font-size: 16px; line-height: 1.4; }
     .cuaderno-meta { font-size: 13px; color: var(--muted); margin-top: 5px; line-height: 1.7; }
-    .cuaderno-badges { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; flex-basis: 100%; margin-top: 4px; }
-    .cuaderno-actions { display: flex; gap: 4px; flex-wrap: nowrap; justify-content: center; flex-basis: 100%; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border); overflow-x: auto; }
-    .cuaderno-actions .btn-link { font-size: 12px; color: var(--muted); white-space: nowrap; padding: 6px 8px; flex-shrink: 0; }
-    .cuaderno-actions .btn-link:hover { background: var(--bg); color: var(--ink); }
-    .cuaderno-updated { font-size: 11px; color: var(--muted); text-align: center; flex-basis: 100%; margin-top: 8px; }
+    .cuaderno-actions { display: flex; gap: 8px; flex-wrap: nowrap; justify-content: center; flex-basis: 100%; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border); overflow-x: auto; }
+    .cuaderno-actions .btn { flex-shrink: 0; white-space: nowrap; }
+    .cuaderno-updated { font-size: 11px; color: var(--muted); text-align: center; flex-basis: 100%; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
 
     /* === MODAL === */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -1608,14 +1606,13 @@ async function loadAdminCuadernos() {
             <div class="cuaderno-name">${esc(c.title || 'Mi Cuaderno')}</div>
             <div class="cuaderno-meta">👤 ${esc(c.display_name || c.username)}</div>
           </div>
-          ${badges.length ? `<div class="cuaderno-badges">${badges.join(' ')}</div>` : ''}
           <div class="cuaderno-actions">
-            <button class="btn-link" onclick="viewAdminCuaderno(${c.id},'${esc(c.display_name||c.username)}')">👁 Ver</button>
-            <button class="btn-link" onclick="editAdminCuaderno(${c.id},'${esc(c.display_name||c.username)}')">✏️ Editar</button>
-            <button class="btn-link" onclick="duplicarAdminCuaderno(${c.id},'${esc(c.title||'Mi Cuaderno')}')">📋 Duplicar</button>
-            <button class="btn-link" style="color:var(--danger)" onclick="deleteAdminCuaderno(${c.id},'${esc(c.title||'Mi Cuaderno')}','${esc(c.display_name||c.username)}')">🗑 Borrar</button>
+            <button class="btn ghost small" onclick="viewAdminCuaderno(${c.id},'${esc(c.display_name||c.username)}')">👁 Ver</button>
+            <button class="btn ghost small" onclick="editAdminCuaderno(${c.id},'${esc(c.display_name||c.username)}')">✏️ Editar</button>
+            <button class="btn ghost small" onclick="duplicarAdminCuaderno(${c.id},'${esc(c.title||'Mi Cuaderno')}')">📋 Duplicar</button>
+            <button class="btn ghost small" style="color:var(--danger);border-color:var(--danger)" onclick="deleteAdminCuaderno(${c.id},'${esc(c.title||'Mi Cuaderno')}','${esc(c.display_name||c.username)}')">🗑 Borrar</button>
           </div>
-          <div class="cuaderno-updated">Actualizado: ${fmtDateTime(c.updated_at)}</div>
+          <div class="cuaderno-updated">Actualizado: ${fmtDateTime(c.updated_at)}${badges.length ? ' · ' + badges.join(' ') : ''}</div>
         `;
         grid.appendChild(div);
       });
