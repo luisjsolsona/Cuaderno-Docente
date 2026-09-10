@@ -195,7 +195,8 @@
     .user-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
     .user-table tr:last-child td { border-bottom: none; }
     .user-table tr:hover td { background: #fafbff; }
-    .cuaderno-card { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 20px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); margin-bottom: 12px; }
+    .cuaderno-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 8px; }
+    .cuaderno-card { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 20px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); margin-bottom: 0; }
     .cuaderno-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
     .cuaderno-info { flex: 1 1 240px; min-width: 0; }
     .cuaderno-name { font-weight: 700; font-size: 16px; line-height: 1.4; }
@@ -420,6 +421,7 @@
 
       /* Tarjetas, modales y paneles admin */
       .home-grid { grid-template-columns: 1fr; }
+      .cuaderno-grid { grid-template-columns: 1fr; }
       .home-card-quick { grid-template-columns: 1fr; gap: 8px; }
       .home-card-quick .btn { min-height: 44px; font-size: 14px; }
       .home-card-actions { justify-content: center; gap: 20px; }
@@ -1588,6 +1590,10 @@ async function loadAdminCuadernos() {
       header.textContent = ciclo === '—' ? 'Sin ciclo asignado' : '📚 ' + ciclo;
       container.appendChild(header);
 
+      const grid = document.createElement('div');
+      grid.className = 'cuaderno-grid';
+      container.appendChild(grid);
+
       byCiclo[ciclo].forEach(c => {
         const div = document.createElement('div');
         div.className = 'cuaderno-card';
@@ -1608,7 +1614,7 @@ async function loadAdminCuadernos() {
             <button class="btn ghost small" style="color:var(--danger);border-color:var(--danger)" onclick="deleteAdminCuaderno(${c.id},'${esc(c.title||'Mi Cuaderno')}','${esc(c.display_name||c.username)}')">🗑 Borrar</button>
           </div>
         `;
-        container.appendChild(div);
+        grid.appendChild(div);
       });
     });
   } catch {
