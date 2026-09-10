@@ -121,6 +121,20 @@
     tbody tr.vacio-row td.c-fecha { color: #9ca3af; }
     tbody tr.holiday td.c-fecha, tbody tr.feoe-row td.c-fecha { font-weight: 600; }
 
+    /* #tabla: columnas secundarias compactas; Observaciones/UD/RA/CE con prioridad */
+    #tabla th, #tabla td { white-space: normal; word-break: break-word; }
+    #tabla .c-fecha, #tabla .c-dia, #tabla .c-tipo, #tabla .c-ini, #tabla .c-fin, #tabla .c-horas { font-size: 12px; padding-left: 6px; padding-right: 6px; }
+    #tabla col.w-fecha, #tabla col.w-dia { width: 68px; }
+    #tabla col.w-tipo { width: 78px; }
+    #tabla col.w-mod { width: 90px; }
+    #tabla col.w-ini, #tabla col.w-fin { width: 56px; }
+    #tabla col.w-horas { width: 52px; }
+    #tabla col.w-obs { width: 22%; }
+    #tabla col.w-ud { width: 110px; }
+    #tabla col.w-ra { width: 20%; }
+    #tabla col.w-ce { width: 26%; }
+    #tabla .c-ra-list, #tabla .c-ce-list { font-size: 12px; line-height: 1.5; }
+
     /* === BADGES === */
     .badge { border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
     .badge-festivo { background: #fee2e2; color: #dc2626; }
@@ -181,11 +195,14 @@
     .user-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
     .user-table tr:last-child td { border-bottom: none; }
     .user-table tr:hover td { background: #fafbff; }
-    .cuaderno-card { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); margin-bottom: 8px; }
+    .cuaderno-card { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 20px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); margin-bottom: 12px; }
     .cuaderno-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
-    .cuaderno-info { flex: 1; min-width: 0; }
-    .cuaderno-name { font-weight: 600; font-size: 14px; }
-    .cuaderno-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .cuaderno-info { flex: 1 1 240px; min-width: 0; }
+    .cuaderno-name { font-weight: 700; font-size: 16px; line-height: 1.4; }
+    .cuaderno-meta { font-size: 13px; color: var(--muted); margin-top: 5px; line-height: 1.7; }
+    .cuaderno-badges { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; flex-basis: 100%; margin-top: 4px; }
+    .cuaderno-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; flex-basis: 100%; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .cuaderno-actions .btn { padding: 8px 16px; }
 
     /* === MODAL === */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -381,7 +398,7 @@
       #tabla tr.holiday { border-left-color: #fca5a5; }
       #tabla tr.feoe-row { border-left-color: #c4b5fd; }
       #tabla tr.vacio-row { padding: 6px 12px; }
-      #tabla tr.vacio-row td.c-obs, #tabla tr.vacio-row td.c-ra { display: none; }
+      #tabla tr.vacio-row td.c-obs, #tabla tr.vacio-row td.c-ra, #tabla tr.vacio-row td.c-ra-list, #tabla tr.vacio-row td.c-ce-list { display: none; }
       #tabla td { display: inline; padding: 0; border: none; font-size: 13px; }
       #tabla td.c-fecha { font-weight: 700; }
       #tabla td.c-dia { color: var(--muted); }
@@ -391,8 +408,11 @@
       #tabla td.c-ini:empty, #tabla td.c-fin:empty { display: none; }
       #tabla td.c-horas:not(:empty)::before { content: "· "; }
       #tabla td.c-horas:not(:empty)::after { content: " h"; }
-      #tabla td.c-obs, #tabla td.c-ra { display: block; flex-basis: 100%; margin-top: 4px; }
-      #tabla td.c-ra::before { content: "RA planificado"; font-size: 11px; color: var(--muted); display: block; margin-bottom: 2px; }
+      #tabla td.c-obs, #tabla td.c-ra, #tabla td.c-ra-list, #tabla td.c-ce-list { display: block; flex-basis: 100%; margin-top: 4px; }
+      #tabla td.c-ra-list:empty, #tabla td.c-ce-list:empty { display: none; }
+      #tabla td.c-ra::before { content: "UD planificada"; font-size: 11px; color: var(--muted); display: block; margin-bottom: 2px; }
+      #tabla td.c-ra-list:not(:empty)::before { content: "RA"; font-size: 11px; color: var(--muted); display: block; margin-bottom: 2px; }
+      #tabla td.c-ce-list:not(:empty)::before { content: "CE"; font-size: 11px; color: var(--muted); display: block; margin-bottom: 2px; }
       #tabla td.c-obs::before { content: "Observaciones"; font-size: 11px; color: var(--muted); display: block; margin-bottom: 2px; }
       #tabla .inline-obs { height: auto; min-height: 38px; overflow: auto; }
       #tabla .inline-ra-sel { max-width: none; width: 100%; }
@@ -404,8 +424,6 @@
       .home-card-quick .btn { min-height: 44px; font-size: 14px; }
       .home-card-actions { justify-content: space-between; }
       .home-card-actions .btn-link { min-height: 40px; font-size: 13px; padding: 6px 12px; }
-      .cuaderno-card { flex-wrap: wrap; }
-      .cuaderno-card > div:last-child { flex-basis: 100%; justify-content: flex-start !important; }
       .modal { padding: 18px; max-height: 92vh; overflow-y: auto; }
       .modal .modal-footer { flex-wrap: wrap; }
       .modal .modal-footer .btn { flex: 1 1 auto; justify-content: center; }
@@ -835,6 +853,11 @@
 
           <div class="table-wrap">
             <table id="tabla">
+              <colgroup>
+                <col class="w-fecha"><col class="w-dia"><col class="w-tipo"><col class="w-mod">
+                <col class="w-ini"><col class="w-fin"><col class="w-horas">
+                <col class="w-obs"><col class="w-ud"><col class="w-ra"><col class="w-ce">
+              </colgroup>
               <thead><tr>
                 <th>Fecha</th><th>Día</th><th>Tipo</th><th>Módulo</th>
                 <th>Inicio</th><th>Fin</th><th>Horas</th><th>Observaciones</th><th>UD Planificada</th><th>RA</th><th>CE</th>
@@ -1569,19 +1592,16 @@ async function loadAdminCuadernos() {
         const div = document.createElement('div');
         div.className = 'cuaderno-card';
         const badges = [];
-        if (c.has_state)    badges.push('<span class="badge badge-clase" style="font-size:10px">Datos</span>');
-        if (c.has_calendar) badges.push('<span class="badge badge-eval" style="font-size:10px">Calendario</span>');
+        if (c.has_state)    badges.push('<span class="badge badge-clase">Datos</span>');
+        if (c.has_calendar) badges.push('<span class="badge badge-eval">Calendario</span>');
         div.innerHTML = `
-          <div style="width:38px;height:38px;border-radius:9px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📋</div>
-          <div class="cuaderno-info" style="flex:1;min-width:0">
+          <div style="width:46px;height:46px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📋</div>
+          <div class="cuaderno-info">
             <div class="cuaderno-name">${esc(c.title || 'Mi Cuaderno')}</div>
-            <div class="cuaderno-meta">
-              👤 ${esc(c.display_name || c.username)}
-              ${badges.length ? ' · ' + badges.join(' ') : ''}
-              · Actualizado: ${fmtDateTime(c.updated_at)}
-            </div>
+            <div class="cuaderno-meta">👤 ${esc(c.display_name || c.username)} · Actualizado: ${fmtDateTime(c.updated_at)}</div>
           </div>
-          <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+          ${badges.length ? `<div class="cuaderno-badges">${badges.join(' ')}</div>` : ''}
+          <div class="cuaderno-actions">
             <button class="btn ghost small" onclick="viewAdminCuaderno(${c.id},'${esc(c.display_name||c.username)}')">👁 Ver</button>
             <button class="btn ghost small" onclick="editAdminCuaderno(${c.id},'${esc(c.display_name||c.username)}')">✏️ Editar</button>
             <button class="btn ghost small" onclick="duplicarAdminCuaderno(${c.id},'${esc(c.title||'Mi Cuaderno')}')">📋 Duplicar</button>
@@ -3374,7 +3394,7 @@ function renderCalendarFromRows(rows) {
     raSelect.addEventListener('change', () => {
       calendarRows[idx].raNum = raSelect.value;
       const ud = UDs.find(u => u.nombre === raSelect.value);
-      calendarRows[idx].raList = ud ? [...new Set(ud.items.map(it => RAs[it.raIdx]?.num))].filter(Boolean).join(' + ') : '';
+      calendarRows[idx].raList = ud ? udRaFullLabel(ud) : '';
       calendarRows[idx].ceList = ud ? udCeLabel(ud) : '';
       tdRAtxt.textContent = calendarRows[idx].raList;
       tdCEtxt.textContent = calendarRows[idx].ceList;
@@ -3579,12 +3599,17 @@ function updateGenerarEnabled() {
 // Recalcula lastAsignaciones (sesiones concretas de cada UD, en orden
 // cronológico según el orden de las UDs) y repinta la pantalla. Se llama
 // tras cualquier cambio (mover CE, reordenar, +/-, bloquear...).
-// Etiqueta de texto "RA1 a), RA1 b), RA8 a)" con los CE que lleva una UD.
+// Texto completo (no solo el código) del/de los RA y de los CE que lleva una
+// UD, para las columnas RA/CE del calendario generado.
+function udRaFullLabel(ud) {
+  const raIdxs = [...new Set((ud.items || []).map(it => it.raIdx))];
+  return raIdxs.map(ri => RAs[ri]).filter(Boolean).map(ra => `${ra.num}: ${ra.contenido}`).join('  |  ');
+}
 function udCeLabel(ud) {
   return (ud.items || []).map(it => {
     const ra = RAs[it.raIdx], ce = ra?.ces?.[it.ceIdx];
-    return ce ? (ra.num + ' ' + ce.num) : null;
-  }).filter(Boolean).join(', ');
+    return ce ? `${ra.num} ${ce.num}: ${ce.desc}` : null;
+  }).filter(Boolean).join('  |  ');
 }
 
 function _rebuildPlanFromUDs() {
@@ -3601,7 +3626,7 @@ function _rebuildPlanFromUDs() {
   lastAsignaciones.forEach(({ ud, sesiones: ses, raNums }) => {
     // raNum guarda el nombre "pelado" de la UD (tiene que coincidir exactamente
     // con el value de las <option> del desplegable de la tabla de calendario).
-    const entry = { raNum: ud.nombre, raList: raNums.join(' + '), ceList: udCeLabel(ud), udNombre: ud.nombre };
+    const entry = { raNum: ud.nombre, raList: udRaFullLabel(ud), ceList: udCeLabel(ud), udNombre: ud.nombre };
     ses.forEach(s => planMap.set(s.iso + '|' + s.modulo, entry));
   });
   _renderUDPlan();
