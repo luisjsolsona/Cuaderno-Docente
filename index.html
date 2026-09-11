@@ -24,6 +24,10 @@
     *, *::before, *::after { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--ink); }
     .wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
+    /* La pestaña Calendario se sale del ancho máximo de .wrap (1200px) y
+       ocupa todo el ancho de la ventana -- la tabla tiene muchas columnas
+       (RA/CE con texto completo) y se aprovecha mejor con más espacio. */
+    #doctab-calendario { width: 100vw; max-width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); padding-left: 24px; padding-right: 24px; box-sizing: border-box; }
 
     /* === HEADER === */
     #app-header {
@@ -349,6 +353,7 @@
     /* === MÓVIL === */
     @media (max-width: 640px) {
       .wrap { padding-left: 10px; padding-right: 10px; }
+      #doctab-calendario { padding-left: 10px; padding-right: 10px; }
       .card { padding: 14px; border-radius: 12px; }
       h1 { font-size: 18px; }
 
