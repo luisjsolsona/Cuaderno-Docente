@@ -3507,6 +3507,73 @@ byId('exportarPlan').onclick = () => {
 // Cada UD agrupa CE de uno o varios RA, sean o no contiguos en la numeración
 // de RA. El pool de "CE pendientes" son todos los CE de todos los RA que
 // todavía no están metidos en ninguna UD; se calcula al vuelo, no se guarda.
+// === DRAG & DROP nativo de RA/CE entre el pool y las UD ===
+// Arrastrar el grupo de un RA mueve todos sus CE que están juntos en el
+// origen (el pool, o esa UD concreta); arrastrar un CE suelto mueve solo ese.
+function dragStartRA(e, raIdx, fromUdIdx) {
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'ra', raIdx, fromUdIdx: (fromUdIdx === undefined ? null : fromUdIdx) }));
+}
+function dragStartCE(e, raIdx, ceIdx, fromUdIdx) {
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'ce', raIdx, ceIdx, fromUdIdx: (fromUdIdx === undefined ? null : fromUdIdx) }));
+}
+
+function handleDropOnUD(e, toUdIdx) {
+  e.preventDefault();
+  let payload;
+  try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+  if (!payload) return;
+  const fromUd = (payload.fromUdIdx === null || payload.fromUdIdx === undefined) ? null : payload.fromUdIdx;
+
+  if (payload.type === 'ra') {
+    if (fromUd === toUdIdx) return;
+    if (fromUd !== null) {
+      const src = UDs[fromUd];
+      const moved = src.items.filter(it => it.raIdx === payload.raIdx);
+      if (!moved.length) return;
+      src.items = src.items.filter(it => it.raIdx !== payload.raIdx);
+      UDs[toUdIdx].items.push(...moved);
+    } else {
+      const pend = udPendingItems().filter(p => p.raIdx === payload.raIdx);
+      if (!pend.length) return;
+      pend.forEach(p => UDs[toUdIdx].items.push({ raIdx: p.raIdx, ceIdx: p.ceIdx }));
+    }
+  } else if (payload.type === 'ce') {
+    if (fromUd === toUdIdx) return;
+    if (fromUd !== null) {
+      const src = UDs[fromUd];
+      const i = src.items.findIndex(it => it.raIdx === payload.raIdx && it.ceIdx === payload.ceIdx);
+      if (i !== -1) src.items.splice(i, 1);
+    }
+    if (!UDs[toUdIdx].items.some(it => it.raIdx === payload.raIdx && it.ceIdx === payload.ceIdx)) {
+      UDs[toUdIdx].items.push({ raIdx: payload.raIdx, ceIdx: payload.ceIdx });
+    }
+  }
+  selectedPendingKey = null;
+  _rebuildPlanFromUDs();
+  scheduleAutoSave();
+}
+
+function handleDropOnPool(e) {
+  e.preventDefault();
+  let payload;
+  try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+  if (!payload) return;
+  const fromUd = (payload.fromUdIdx === null || payload.fromUdIdx === undefined) ? null : payload.fromUdIdx;
+  if (fromUd === null) return; // ya estaba en el pool
+  const src = UDs[fromUd];
+  if (payload.type === 'ra') {
+    src.items = src.items.filter(it => it.raIdx !== payload.raIdx);
+  } else {
+    const i = src.items.findIndex(it => it.raIdx === payload.raIdx && it.ceIdx === payload.ceIdx);
+    if (i !== -1) src.items.splice(i, 1);
+  }
+  selectedPendingKey = null;
+  _rebuildPlanFromUDs();
+  scheduleAutoSave();
+}
+
 function udPendingItems() {
   const used = new Set();
   UDs.forEach(u => u.items.forEach(it => used.add(it.raIdx + '_' + it.ceIdx)));
@@ -3686,11 +3753,12 @@ function _renderUDPlan() {
     const poolDiv = document.createElement('div');
     poolDiv.className = 'plan-adjustable';
     poolDiv.style.cssText = 'background:#fff7ed;border:2px dashed #f59e0b;border-radius:12px;padding:12px;margin-bottom:14px';
-    let poolHTML = `<div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:10px">⚠️ CE pendientes de asignar a una UD (${pend.length}) — toca uno y luego "📥 Asignar aquí" en la UD destino</div>`;
+    let poolHTML = `<div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:10px">⚠️ CE pendientes de asignar a una UD (${pend.length}) — arrastra un RA (☰) o un CE a la UD destino, o toca uno y luego "📥 Asignar aquí"</div>`;
     _groupPendingByRA(pend).forEach(g => {
       const col = RA_COLORS[g.raIdx % 8];
       poolHTML += `<div style="margin-bottom:10px">
-        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:5px">
+        <div draggable="true" ondragstart="dragStartRA(event,${g.raIdx},null)" style="display:flex;align-items:flex-start;gap:8px;margin-bottom:5px;cursor:grab;padding:3px;border-radius:6px" title="Arrastra para mover todo el RA con sus CE pendientes">
+          <span style="color:${col.text};font-size:13px;flex-shrink:0">☰</span>
           <span style="background:${col.badge};color:#fff;font-weight:800;border-radius:6px;padding:2px 8px;font-size:11px;white-space:nowrap;flex-shrink:0">${esc(g.ra.num)}</span>
           <span style="font-size:12px;font-weight:600;color:${col.text}">${esc(g.ra.contenido)}</span>
         </div>
@@ -3698,7 +3766,7 @@ function _renderUDPlan() {
       g.items.forEach(({ raIdx, ceIdx, ce }) => {
         const key = raIdx + '_' + ceIdx;
         const sel = selectedPendingKey === key;
-        poolHTML += `<button onclick="selectPendingCE(${raIdx},${ceIdx})" style="text-align:left;display:flex;gap:8px;align-items:flex-start;background:${sel ? col.bg : '#fff'};border:2px solid ${sel ? '#111' : col.border};border-radius:7px;padding:6px 9px;cursor:pointer">
+        poolHTML += `<button draggable="true" ondragstart="dragStartCE(event,${raIdx},${ceIdx},null)" onclick="selectPendingCE(${raIdx},${ceIdx})" style="text-align:left;display:flex;gap:8px;align-items:flex-start;background:${sel ? col.bg : '#fff'};border:2px solid ${sel ? '#111' : col.border};border-radius:7px;padding:6px 9px;cursor:grab">
           <span style="font-weight:700;color:${col.text};white-space:nowrap;flex-shrink:0">${esc(ce.num)}${sel ? ' ✓' : ''}</span>
           <span style="font-size:12px;color:var(--ink)">${esc(ce.desc)}</span>
         </button>`;
@@ -3706,6 +3774,9 @@ function _renderUDPlan() {
       poolHTML += `</div></div>`;
     });
     poolDiv.innerHTML = poolHTML;
+    poolDiv.ondragover = e => { e.preventDefault(); poolDiv.style.background = '#fef3c7'; };
+    poolDiv.ondragleave = () => { poolDiv.style.background = '#fff7ed'; };
+    poolDiv.ondrop = e => { poolDiv.style.background = '#fff7ed'; handleDropOnPool(e); };
     planContent.appendChild(poolDiv);
   }
 
@@ -3749,13 +3820,14 @@ function _renderUDPlan() {
       ? _groupItemsByRA(ud.items).map(g => {
           if (!g.ra) return '';
           const c = RA_COLORS[g.raIdx % 8];
-          const ceRows = g.ceItems.map(({ ce, itIdx }) => `<div style="display:flex;gap:8px;align-items:flex-start;background:#fff;border:1px solid ${c.border};border-radius:6px;padding:6px 9px;margin-top:4px">
+          const ceRows = g.ceItems.map(({ ce, ceIdx, itIdx }) => `<div draggable="true" ondragstart="dragStartCE(event,${g.raIdx},${ceIdx},${udIdx})" style="display:flex;gap:8px;align-items:flex-start;background:#fff;border:1px solid ${c.border};border-radius:6px;padding:6px 9px;margin-top:4px;cursor:grab">
               <span style="font-weight:700;color:${c.text};white-space:nowrap;flex-shrink:0">${esc(ce.num)}</span>
               <span style="flex:1;font-size:12px;color:var(--ink)">${esc(ce.desc)}</span>
               <button onclick="unassignCE(${udIdx},${itIdx})" title="Quitar de esta UD" style="background:none;border:none;color:${c.text};cursor:pointer;font-weight:800;padding:0;line-height:1;flex-shrink:0">✕</button>
             </div>`).join('');
           return `<div style="margin-bottom:8px">
-            <div style="display:flex;align-items:flex-start;gap:8px">
+            <div draggable="true" ondragstart="dragStartRA(event,${g.raIdx},${udIdx})" style="display:flex;align-items:flex-start;gap:8px;cursor:grab;padding:3px;border-radius:6px" title="Arrastra para mover todo el RA con sus CE de esta UD">
+              <span style="color:${c.text};font-size:13px;flex-shrink:0">☰</span>
               <span style="background:${c.badge};color:#fff;font-weight:800;border-radius:6px;padding:2px 8px;font-size:11px;white-space:nowrap;flex-shrink:0">${esc(g.ra.num)}</span>
               <span style="font-size:12px;font-weight:600;color:${c.text}">${esc(g.ra.contenido)}</span>
             </div>
@@ -3804,6 +3876,9 @@ function _renderUDPlan() {
           <th style="padding:5px 8px;text-align:left;color:var(--muted)">Fecha</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Día</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Módulo</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Horario</th><th style="padding:5px 8px;text-align:left;color:var(--muted)">Horas</th>
         </tr></thead><tbody>${sesRows}</tbody></table>
       </div>`;
+    card.ondragover = e => { e.preventDefault(); card.style.outline = `2px dashed ${col.badge}`; card.style.outlineOffset = '2px'; };
+    card.ondragleave = () => { card.style.outline = 'none'; };
+    card.ondrop = e => { card.style.outline = 'none'; handleDropOnUD(e, udIdx); };
     planContent.appendChild(card);
   });
 
@@ -3818,7 +3893,7 @@ function _renderUDPlan() {
   const nota = document.createElement('p');
   nota.className = 'plan-adjustable';
   nota.style.cssText = 'font-size:12px;color:var(--muted);margin-top:4px;font-style:italic';
-  nota.textContent = 'Usa ↑/↓ para reordenar las UD (fija el orden en que se imparten), +/− para ajustar sesiones y 🔒 para fijar un valor. El botón de generar calendario se habilita cuando no queden CE pendientes.';
+  nota.textContent = 'Arrastra el icono ☰ para mover un RA entero (con sus CE), o arrastra un CE suelto para moverlo solo. Usa ↑/↓ para reordenar las UD (fija el orden en que se imparten), +/− para ajustar sesiones y 🔒 para fijar un valor. El botón de generar calendario se habilita cuando no queden CE pendientes.';
   planContent.appendChild(nota);
 
   const badge = byId('planTotalBadge');
