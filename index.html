@@ -3738,6 +3738,24 @@ function _groupItemsByRA(items) {
   return [...map.values()];
 }
 
+// Índice raIdx -> [udIdx,...] con al menos un CE de ese RA asignado en esa UD.
+// Sirve para avisar cuando un mismo RA está repartido en varias UD.
+function _raUdIndex() {
+  const map = new Map();
+  UDs.forEach((ud, udIdx) => {
+    [...new Set(ud.items.map(it => it.raIdx))].forEach(raIdx => {
+      if (!map.has(raIdx)) map.set(raIdx, []);
+      map.get(raIdx).push(udIdx);
+    });
+  });
+  return map;
+}
+function raOtherUDsLabel(raUdIdx, raIdx, excludeUdIdx) {
+  const others = (raUdIdx.get(raIdx) || []).filter(i => i !== excludeUdIdx).map(i => UDs[i]?.nombre).filter(Boolean);
+  if (!others.length) return '';
+  return `<span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border-radius:5px;padding:1px 7px;margin-left:2px;white-space:nowrap">⚠️ también en ${esc(others.join(', '))}</span>`;
+}
+
 function _renderUDPlan() {
   const totalSes = planSesiones.length;
   const planContent = byId('planContent');
@@ -3747,8 +3765,7 @@ function _renderUDPlan() {
   existing.forEach(e => e.remove());
 
   const pend = udPendingItems();
-
-  // Pool de CE pendientes de asignar
+  const raUdIdx = _raUdIndex();
   if (pend.length) {
     const poolDiv = document.createElement('div');
     poolDiv.className = 'plan-adjustable';
@@ -3761,6 +3778,7 @@ function _renderUDPlan() {
           <span style="color:${col.text};font-size:13px;flex-shrink:0">☰</span>
           <span style="background:${col.badge};color:#fff;font-weight:800;border-radius:6px;padding:2px 8px;font-size:11px;white-space:nowrap;flex-shrink:0">${esc(g.ra.num)}</span>
           <span style="font-size:12px;font-weight:600;color:${col.text}">${esc(g.ra.contenido)}</span>
+          ${raOtherUDsLabel(raUdIdx, g.raIdx, null)}
         </div>
         <div style="display:flex;flex-direction:column;gap:5px">`;
       g.items.forEach(({ raIdx, ceIdx, ce }) => {
@@ -3830,6 +3848,7 @@ function _renderUDPlan() {
               <span style="color:${c.text};font-size:13px;flex-shrink:0">☰</span>
               <span style="background:${c.badge};color:#fff;font-weight:800;border-radius:6px;padding:2px 8px;font-size:11px;white-space:nowrap;flex-shrink:0">${esc(g.ra.num)}</span>
               <span style="font-size:12px;font-weight:600;color:${c.text}">${esc(g.ra.contenido)}</span>
+              ${raOtherUDsLabel(raUdIdx, g.raIdx, udIdx)}
             </div>
             ${ceRows}
           </div>`;
