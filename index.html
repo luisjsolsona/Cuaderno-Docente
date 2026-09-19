@@ -145,6 +145,26 @@
     .badge-eval { background: #fef3c7; color: #d97706; }
     .badge-feoe { background: #ede9fe; color: #7c3aed; }
     .badge-clase { background: #d1fae5; color: #059669; }
+
+    /* Vista año completo del calendario */
+    .anio-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--ink); margin-bottom: 16px; align-items: center; }
+    .anio-dot { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid; margin-right: 5px; vertical-align: -1px; }
+    .anio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+    .anio-month { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--card); }
+    .anio-month.no-class { opacity: .5; background: var(--bg); }
+    .anio-month-title { font-weight: 700; font-size: 13px; text-transform: capitalize; margin-bottom: 8px; text-align: center; }
+    .anio-week-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 3px; }
+    .anio-week-header span { font-size: 10px; color: var(--muted); text-align: center; font-weight: 600; }
+    .anio-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+    .anio-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 5px; border: 1.5px solid transparent; color: var(--muted); }
+    .anio-day.empty { visibility: hidden; }
+    .anio-day.has-info { cursor: pointer; transition: transform .1s; }
+    .anio-day.has-info:hover { filter: brightness(0.95); transform: scale(1.1); }
+    .anio-day.clase { background: #bbf7d0; border-color: #16a34a; color: #14532d; font-weight: 600; }
+    .anio-day.festivo { background: #fecaca; border-color: #dc2626; color: #7f1d1d; }
+    .anio-day.feoe { background: #ddd6fe; border-color: #7c3aed; color: #4c1d95; }
+    .anio-day.eval { background: #fde68a; border-color: #d97706; color: #78350f; font-weight: 700; }
+    .anio-day.vacio { background: #fff; border-color: var(--border); }
     .badge-admin { background: #fce7f3; color: #9d174d; }
     .badge-docente { background: #dbeafe; color: #1d4ed8; }
 
@@ -842,6 +862,12 @@
           <div id="meta" class="muted" style="font-size:13px;margin-bottom:10px"></div>
           <p style="font-size:12px;color:var(--accent2);margin:0 0 8px">💡 Puedes editar la columna <strong>Observaciones</strong> y el <strong>UD Planificada</strong> directamente en la tabla. Los cambios se guardan automáticamente.</p>
 
+          <div style="display:flex;gap:6px;margin-bottom:14px">
+            <button class="btn small" id="calview-lista" onclick="setCalView('lista')">📋 Vista lista</button>
+            <button class="btn ghost small" id="calview-anio" onclick="setCalView('anio')">📅 Vista año completo</button>
+          </div>
+
+          <div id="calview-lista-panel">
           <!-- Filter bar -->
           <div class="cal-filter-bar">
             <label>Filtrar:</label>
@@ -873,6 +899,19 @@
             </table>
           </div>
           <p class="note" style="margin-top:8px">El .xlsx incluye: hoja <strong>Calendario</strong>, hoja <strong>RAs y CEs</strong> y (si planificaste) hoja <strong>Planificación por UDs</strong>.</p>
+          </div>
+
+          <div id="calview-anio-panel" style="display:none">
+            <div class="anio-legend">
+              <span><i class="anio-dot" style="background:#bbf7d0;border-color:#16a34a"></i> Clase</span>
+              <span><i class="anio-dot" style="background:#fecaca;border-color:#dc2626"></i> Festivo</span>
+              <span><i class="anio-dot" style="background:#ddd6fe;border-color:#7c3aed"></i> FEOE</span>
+              <span><i class="anio-dot" style="background:#fde68a;border-color:#d97706"></i> Evaluación</span>
+              <span><i class="anio-dot" style="background:#fff;border-color:var(--border)"></i> Sin clase ese día</span>
+              <span style="color:var(--muted)">Meses en gris: sin clases programadas</span>
+            </div>
+            <div id="anioGrid" class="anio-grid"></div>
+          </div>
         </div>
         <div id="calendario-empty-state" class="tab-empty">
           <div class="tab-empty-icon">📆</div>
@@ -3976,6 +4015,114 @@ byId('planificar').onclick = () => {
   showDocTab('planificacion');
   scheduleAutoSave();
 };
+
+// === VISTA AÑO COMPLETO ===
+function setCalView(mode) {
+  const listaBtn = byId('calview-lista'), anioBtn = byId('calview-anio');
+  const listaPanel = byId('calview-lista-panel'), anioPanel = byId('calview-anio-panel');
+  if (!listaBtn || !anioBtn || !listaPanel || !anioPanel) return;
+  if (mode === 'anio') {
+    listaPanel.style.display = 'none'; anioPanel.style.display = 'block';
+    listaBtn.className = 'btn ghost small'; anioBtn.className = 'btn small';
+    renderAnnualView();
+  } else {
+    listaPanel.style.display = 'block'; anioPanel.style.display = 'none';
+    listaBtn.className = 'btn small'; anioBtn.className = 'btn ghost small';
+  }
+}
+
+function renderAnnualView() {
+  const grid = byId('anioGrid');
+  if (!grid) return;
+  if (!calendarRows.length) { grid.innerHTML = '<p class="muted">Genera primero el calendario.</p>'; return; }
+
+  const byDate = new Map();
+  calendarRows.forEach(r => {
+    if (!byDate.has(r.iso)) byDate.set(r.iso, []);
+    byDate.get(r.iso).push(r);
+  });
+
+  const isos = [...byDate.keys()].sort();
+  const first = new Date(isos[0] + 'T00:00:00');
+  const last = new Date(isos[isos.length - 1] + 'T00:00:00');
+
+  const months = [];
+  let cursor = new Date(first.getFullYear(), first.getMonth(), 1);
+  const endCursor = new Date(last.getFullYear(), last.getMonth(), 1);
+  while (cursor <= endCursor) {
+    months.push({ year: cursor.getFullYear(), month: cursor.getMonth() });
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+  }
+
+  let html = '';
+  months.forEach(({ year, month }) => {
+    const firstOfMonth = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const startOffset = (firstOfMonth.getDay() + 6) % 7; // Lunes=0
+
+    let hasClass = false;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      const rows = byDate.get(iso);
+      if (rows && rows.some(r => r.tipo === 'clase')) { hasClass = true; break; }
+    }
+
+    let daysHTML = '';
+    for (let i = 0; i < startOffset; i++) daysHTML += '<div class="anio-day empty"></div>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      const rows = byDate.get(iso);
+      let status = '';
+      if (rows && rows.length) {
+        if (rows.some(r => r.tipo === 'festivo')) status = 'festivo';
+        else if (rows.some(r => r.tipo === 'feoe')) status = 'feoe';
+        else if (rows.some(r => r.tipo === 'eval')) status = 'eval';
+        else if (rows.some(r => r.tipo === 'clase')) status = 'clase';
+        else status = 'vacio';
+      }
+      const clickable = !!(rows && rows.length);
+      daysHTML += `<div class="anio-day ${status}${clickable ? ' has-info' : ''}"${clickable ? ` onclick="openDayModal('${iso}')"` : ''} title="${clickable ? esc(DIAS[new Date(year,month,d).getDay()]) : ''}">${d}</div>`;
+    }
+
+    html += `<div class="anio-month${hasClass ? '' : ' no-class'}">
+      <div class="anio-month-title">${esc(MESES_ES[month])} ${year}</div>
+      <div class="anio-week-header"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+      <div class="anio-days">${daysHTML}</div>
+    </div>`;
+  });
+
+  grid.innerHTML = html;
+}
+
+function openDayModal(iso) {
+  const rows = calendarRows.filter(r => r.iso === iso);
+  if (!rows.length) return;
+  const d = new Date(iso + 'T00:00:00');
+  const titulo = DIAS[d.getDay()] + ' ' + fmtDate(d);
+
+  let body = '';
+  rows.forEach(r => {
+    let badge = '<span class="badge">Sin clase</span>';
+    if (r.tipo === 'festivo') badge = '<span class="badge badge-festivo">Festivo</span>';
+    else if (r.tipo === 'eval') badge = '<span class="badge badge-eval">Evaluación</span>';
+    else if (r.tipo === 'feoe') badge = '<span class="badge badge-feoe">FEOE</span>';
+    else if (r.tipo === 'clase') badge = '<span class="badge badge-clase">Clase</span>';
+
+    body += `<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+        ${badge}
+        ${r.modulo && r.modulo !== '—' ? `<strong>${esc(r.modulo)}</strong>` : ''}
+        ${r.inicio && r.inicio !== '—' ? `<span class="muted" style="font-size:12px">${r.inicio}–${r.fin} · ${r.horas}h</span>` : ''}
+      </div>
+      ${r.obs ? `<div style="font-size:13px;margin-bottom:6px">${esc(r.obs)}</div>` : ''}
+      ${r.raNum ? `<div style="font-size:12px;margin-top:4px"><strong>UD:</strong> ${esc(r.raNum)}</div>` : ''}
+      ${r.raList ? `<div style="font-size:12px;margin-top:2px"><strong>RA:</strong> ${esc(r.raList)}</div>` : ''}
+      ${r.ceList ? `<div style="font-size:12px;margin-top:2px"><strong>CE:</strong> ${esc(r.ceList)}</div>` : ''}
+    </div>`;
+  });
+
+  openModal('📅 ' + titulo, body, [{ text: 'Cerrar', cls: 'ghost', action: closeModal }]);
+}
 
 // === CALENDAR FILTER ===
 function applyCalFilter() {
