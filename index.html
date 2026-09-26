@@ -785,6 +785,9 @@
               <button class="btn import-btn" onclick="openCateduImport();event.stopPropagation()" style="font-size:12px;padding:6px 14px;border-radius:999px;white-space:nowrap;flex-shrink:0">
                 🔍 Buscar módulo en CATEDU
               </button>
+              <button class="btn ghost" onclick="openPasteRAsModal();event.stopPropagation()" title="Para cuando CATEDU tiene los RA/CE erróneos o desactualizados para tu módulo" style="font-size:12px;padding:6px 14px;border-radius:999px;white-space:nowrap;flex-shrink:0">
+                📋 Pegar RA/CE manualmente
+              </button>
             </div>
             <span class="arrow">▼</span>
           </div>
@@ -1013,6 +1016,32 @@
     <div class="import-foot">
       <button class="btn ghost" onclick="closeImportModal()">Cancelar</button>
       <button class="btn primary" id="importApplyBtn" onclick="applyImport()" disabled>✔ Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========= MODAL: PEGAR RAs/CEs MANUALMENTE ========= -->
+<div class="modal-overlay hidden" id="pasteRAsModal" onclick="if(event.target===this)closePasteRAsModal()">
+  <div class="import-modal" style="max-width:640px">
+    <div class="import-head">
+      <h2>📋 Añadir RA/CE pegando texto</h2>
+      <button class="import-close" onclick="closePasteRAsModal()">✕</button>
+    </div>
+    <div style="background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:8px 20px;font-size:12px;color:#1e40af">
+      Útil cuando CATEDU tiene los RA/CE erróneos o desactualizados para tu módulo. Pega el texto oficial (currículo LOMLOE, BOA/BOE) empezando cada RA por "RA1.", "RA2."... y cada CE en su propia línea: "a) ...", "CE1_a) ..." o "CE1.a) ..." — se detecta automáticamente.
+    </div>
+    <div class="import-body">
+      <textarea id="pasteRaText" placeholder="RA1. Elabora páginas web con lenguajes de marcas...&#10;CE1_a) Se han identificado las características generales...&#10;CE1_b) Se ha realizado la estructura de un documento HTML...&#10;RA2. Instala gestores de contenidos..." style="min-height:220px;font-size:12px;width:100%"></textarea>
+      <div class="import-ra-status" id="pasteRaStatus"></div>
+      <label style="display:flex;align-items:flex-start;gap:7px;font-size:12px;margin-top:12px;color:var(--muted)">
+        <input type="checkbox" id="pasteReplace" checked style="margin-top:2px" />
+        <span>Reemplazar los RA/CE actuales del cuaderno (recomendado si ya habías importado desde CATEDU los erróneos). Si lo desmarcas, estos se añaden a los que ya tengas.</span>
+      </label>
+    </div>
+    <div class="import-foot">
+      <button class="btn ghost" onclick="closePasteRAsModal()">Cancelar</button>
+      <button class="btn ghost small" onclick="analizarPastedRAs()">🔍 Analizar texto</button>
+      <button class="btn primary" id="pasteApplyBtn" onclick="applyPastedRAs()" disabled>✔ Añadir a mi cuaderno</button>
     </div>
   </div>
 </div>
@@ -3266,7 +3295,7 @@ function parseRAsFromTextImport(rawText) {
       currentRA = { num: `RA${raNum}`, contenido, ces: [] }; continue;
     }
     if (currentRA) {
-      const ceM = line.match(/^(?:CE\d+\.)?([a-z])[).\-]\s*(.+)$/i);
+      const ceM = line.match(/^(?:CE\d+[._])?([a-z])[).\-]\s*(.+)$/i);
       if (ceM) { const letra = ceM[1].toLowerCase()+')'; if (ceM[2].trim().length>3) currentRA.ces.push({num:letra,desc:ceM[2].trim()}); continue; }
       const ceM2 = line.match(/^\d+\.([a-z])[)]\s*(.+)$/i);
       if (ceM2) { const letra = ceM2[1].toLowerCase()+')'; if (ceM2[2].trim().length>3) currentRA.ces.push({num:letra,desc:ceM2[2].trim()}); continue; }
@@ -3274,6 +3303,51 @@ function parseRAsFromTextImport(rawText) {
   }
   if (currentRA) result.push(currentRA);
   return result;
+}
+
+// === Añadir RA/CE pegando texto (alternativa cuando CATEDU tiene datos erróneos) ===
+let pastedRaList = [];
+function openPasteRAsModal() {
+  byId('pasteRaText').value = '';
+  setPasteStatus('', '');
+  pastedRaList = [];
+  byId('pasteApplyBtn').disabled = true;
+  byId('pasteReplace').checked = true;
+  byId('pasteRAsModal').classList.remove('hidden');
+}
+function closePasteRAsModal() { byId('pasteRAsModal').classList.add('hidden'); }
+function setPasteStatus(msg, cls) {
+  const el = byId('pasteRaStatus');
+  el.textContent = msg;
+  el.className = 'import-ra-status' + (msg ? ' show ' + cls : '');
+}
+function analizarPastedRAs() {
+  const text = byId('pasteRaText').value.trim();
+  if (!text) { setPasteStatus('Pega primero el texto con los RA y CE.', 'err'); return; }
+  const raList = parseRAsFromTextImport(text);
+  if (!raList.length) { setPasteStatus('No se ha detectado ningún RA. Revisa que cada uno empiece por "RA1.", "RA2.", etc.', 'err'); pastedRaList = []; byId('pasteApplyBtn').disabled = true; return; }
+  const totalCEs = raList.reduce((a, r) => a + (r.ces?.length || 0), 0);
+  const sinCEs = raList.filter(r => !r.ces.length).map(r => r.num);
+  pastedRaList = raList;
+  let msg = `OK: ${raList.length} RAs${totalCEs ? ` y ${totalCEs} CEs` : ''} detectados. Pulsa "Añadir a mi cuaderno" para guardarlos.`;
+  if (sinCEs.length) msg += ` ⚠️ Sin CE detectados: ${sinCEs.join(', ')} — revisa el formato de sus líneas.`;
+  setPasteStatus(msg, sinCEs.length ? 'err' : 'ok');
+  byId('pasteApplyBtn').disabled = false;
+}
+function applyPastedRAs() {
+  if (!pastedRaList.length) return;
+  if (byId('pasteReplace').checked) {
+    if (RAs.length && !confirm(`Esto borrará los ${RAs.length} RA actuales del cuaderno (y la planificación por UD que dependa de ellos) y los sustituirá por los ${pastedRaList.length} nuevos. ¿Continuar?`)) return;
+    RAs.splice(0, RAs.length);
+    if (typeof UDs !== 'undefined') UDs.splice(0);
+    selectedPendingKey = null; lastAsignaciones = []; planMap = new Map();
+    if (byId('salidaPlan')) byId('salidaPlan').style.display = 'none';
+    if (byId('plan-empty-state')) byId('plan-empty-state').style.display = 'block';
+  }
+  pastedRaList.forEach(ra => RAs.push(ra));
+  renderRAs();
+  scheduleAutoSave();
+  closePasteRAsModal();
 }
 
 async function doImportRas() {
